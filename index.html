@@ -77,10 +77,10 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transition: opacity var(--trans-slow), transform 6s linear; /* Cinematic slow zoom */
+            transition: opacity var(--trans-slow), transform 6s linear; 
             opacity: 0;
             filter: brightness(0.7) contrast(1.1);
-            transform: scale(1.1); /* Starting zoom level */
+            transform: scale(1.1); 
         }
 
         #scene-image.visible {
@@ -180,22 +180,6 @@
             overflow: hidden;
         }
 
-        /* Hover Shine Effect */
-        .btn-next::after, .btn-choice::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
-            transition: 0.5s;
-        }
-
-        .btn-next:hover::after, .btn-choice:hover::after {
-            left: 100%;
-        }
-
         .btn-next:hover, .btn-choice:hover {
             background: var(--amber);
             color: black;
@@ -215,29 +199,145 @@
             box-shadow: 0 0 25px rgba(255, 68, 68, 0.6);
         }
 
-        /* Rotation Icon */
-        .rotate-icon {
-            width: 64px;
-            height: 64px;
-            border: 3px solid var(--amber);
-            border-radius: 8px;
-            margin-bottom: 20px;
-            animation: rotate-anim 2.5s infinite ease-in-out;
+        /* Top Left Navigation (Home/QR) */
+        #nav-top-left {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
         }
 
-        @keyframes rotate-anim {
-            0% { transform: rotate(0deg); }
-            50% { transform: rotate(-90deg); }
-            100% { transform: rotate(-90deg); }
+        .btn-home {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: var(--amber);
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            backdrop-filter: blur(5px);
+        }
+
+        .btn-home:hover {
+            background: var(--amber);
+            color: black;
+            box-shadow: 0 0 15px var(--amber);
+        }
+
+        /* QR Modal */
+        #qr-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        #qr-modal.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        #qr-content {
+            background: #111;
+            border: 1px solid var(--amber);
+            padding: 2.5rem;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: scale(0.8);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+        }
+
+        #qr-modal.active #qr-content {
+            transform: scale(1);
+        }
+
+        #qr-content h3 {
+            font-family: 'Pirata One', cursive;
+            color: var(--amber);
+            font-size: 2.5rem;
+            margin: 0 0 1rem 0;
+            letter-spacing: 2px;
+        }
+
+        #qr-content p {
+            font-family: 'Alegreya', serif;
+            color: #ccc;
+            margin-bottom: 2rem;
+            font-size: 1.2rem;
+        }
+
+        .qr-frame {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            display: inline-block;
+            margin-bottom: 1.5rem;
+        }
+
+        .qr-frame img {
+            display: block;
+            width: 200px;
+            height: 200px;
+        }
+
+        .btn-close-modal {
+            background: transparent;
+            border: 1px solid var(--amber);
+            color: var(--amber);
+            padding: 8px 20px;
+            font-family: 'Pirata One', cursive;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-close-modal:hover {
+            background: var(--amber);
+            color: black;
         }
     </style>
 </head>
 <body>
 
     <div id="rotate-overlay">
-        <div class="rotate-icon"></div>
+        <div style="width: 64px; height: 64px; border: 3px solid var(--amber); border-radius: 8px; margin-bottom: 20px; animation: rotate-anim 2.5s infinite ease-in-out;"></div>
         <h2 style="font-family: 'Pirata One'; color: var(--amber); font-size: 3rem;">Turn Your Fate</h2>
         <p style="font-size: 1.2rem;">Please rotate your device to landscape to continue your journey.</p>
+    </div>
+
+    <!-- Home/QR Button -->
+    <div id="nav-top-left">
+        <button class="btn-home" onclick="showQR()" title="View Realm Link">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+        </button>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div id="qr-modal" onclick="hideQR()">
+        <div id="qr-content" onclick="event.stopPropagation()">
+            <h3>Share the Journey</h3>
+            <p>Scan to return to the town entrance or share with fellow travelers.</p>
+            <div class="qr-frame">
+                <!-- QR Code generated linking to your specific URL -->
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://augmentedthinker.github.io/RPG-TOWN/&bgcolor=ffffff" alt="QR Code">
+            </div>
+            <br>
+            <button class="btn-close-modal" onclick="hideQR()">CLOSE LEDGER</button>
+        </div>
     </div>
 
     <div id="game-container">
@@ -247,7 +347,6 @@
             <h1 id="scene-title"></h1>
             <div id="narrative-text"></div>
             
-            <!-- Dynamic Choice Grid -->
             <div id="choice-grid">
                 <button class="btn-choice" onclick="triggerInteraction(4)">TALK TO BARTHO</button>
                 <button class="btn-choice" onclick="triggerInteraction(5)">SPEAK WITH ELARA</button>
@@ -262,7 +361,6 @@
     </div>
 
     <script>
-        // Note: Filenames updated to .png as per project requirements
         const gameData = [
             {
                 id: 0,
@@ -337,11 +435,9 @@
             currentIndex = index;
             const data = gameData[index];
             
-            // Phase 1: Fade out current content
             overlay.classList.remove('show-text');
             imgElement.classList.remove('visible');
 
-            // Phase 2: Update data and fade in after delay
             setTimeout(() => {
                 imgElement.src = data.image;
                 titleElement.innerText = data.title;
@@ -350,11 +446,9 @@
                 const onContentReady = () => {
                     imgElement.classList.add('visible');
                     
-                    // Delay narrative appearance for cinematic feel
                     setTimeout(() => {
                         overlay.classList.add('show-text');
                         
-                        // Hub Logic (Choice Grid)
                         if (data.isHub) {
                             choiceGrid.style.display = 'flex';
                             actionBtn.innerText = "RETIRE FOR THE NIGHT";
@@ -371,27 +465,25 @@
                     }, 200);
                 };
 
-                // Image loading management
                 if (imgElement.complete) {
                     onContentReady();
                 } else {
                     imgElement.onload = onContentReady;
-                    imgElement.onerror = onContentReady; // Failsafe
+                    imgElement.onerror = onContentReady;
                 }
             }, 700);
         }
 
         function handleMainAction() {
             const current = gameData[currentIndex];
-            
             if (current.isInteraction) {
-                renderScene(3); // Return to Tavern Hub
+                renderScene(3);
             } else if (current.isHub) {
-                renderScene(8); // Proceed to Private Room
+                renderScene(8);
             } else if (currentIndex < gameData.length - 1) {
-                renderScene(currentIndex + 1); // Next Linear Scene
+                renderScene(currentIndex + 1);
             } else {
-                renderScene(0); // Loop to Start
+                renderScene(0);
             }
         }
 
@@ -399,8 +491,23 @@
             renderScene(targetIndex);
         }
 
-        // Initialize first scene on load
+        function showQR() {
+            document.getElementById('qr-modal').classList.add('active');
+        }
+
+        function hideQR() {
+            document.getElementById('qr-modal').classList.remove('active');
+        }
+
         window.onload = () => renderScene(0);
     </script>
+
+    <style>
+        @keyframes rotate-anim {
+            0% { transform: rotate(0deg); }
+            50% { transform: rotate(-90deg); }
+            100% { transform: rotate(-90deg); }
+        }
+    </style>
 </body>
-</html>
+    </html>
