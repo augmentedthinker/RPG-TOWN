@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Sanctuary of the Weary Traveler</title>
+    
+    <!-- Custom fonts from your Intro: Pirata One (Titles) and Alegreya (Body) -->
+    <link href="https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700&family=Pirata+One&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --amber: #f59e0b;
+            --amber-glow: rgba(245, 158, 11, 0.6);
+            --bg-dark: #000000;
+            --trans-slow: 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --trans-fast: 0.5s ease;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-dark);
+            color: #e0e0e0;
+            font-family: 'Alegreya', serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: none;
+        }
+
+        /* Ambient Flicker Animation for Titles */
+        @keyframes flicker {
+            0%, 100% { opacity: 1; text-shadow: 0 0 10px var(--amber-glow); }
+            50% { opacity: 0.85; text-shadow: 0 0 15px var(--amber); }
+        }
+
+        #rotate-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: black;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        @media (orientation: portrait) {
+            #rotate-overlay { display: flex; }
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            overflow: hidden;
+        }
+
+        /* Vignette Overlay for Depth */
+        #game-container::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.8) 100%);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        #scene-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity var(--trans-slow), transform 6s linear; /* Cinematic slow zoom */
+            opacity: 0;
+            filter: brightness(0.7) contrast(1.1);
+            transform: scale(1.1); /* Starting zoom level */
+        }
+
+        #scene-image.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        #narrative-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 5rem 2rem 4rem 2rem;
+            background: linear-gradient(to top, 
+                black 0%, 
+                rgba(0,0,0,0.95) 40%, 
+                rgba(0,0,0,0.6) 70%, 
+                transparent 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            z-index: 10;
+        }
+
+        #scene-title {
+            font-family: 'Pirata One', cursive;
+            color: var(--amber);
+            font-size: clamp(2rem, 8vw, 3.5rem);
+            margin-bottom: 0.5rem;
+            letter-spacing: 3px;
+            text-shadow: 0 4px 10px rgba(0,0,0,1);
+            opacity: 0;
+            filter: blur(5px);
+            transform: translateY(20px);
+            transition: opacity var(--trans-slow), transform var(--trans-slow), filter var(--trans-slow);
+            animation: flicker 4s infinite alternate ease-in-out;
+        }
+
+        #narrative-text {
+            font-size: clamp(1.1rem, 3vw, 1.5rem);
+            line-height: 1.6;
+            max-width: 850px;
+            text-shadow: 2px 2px 4px #000;
+            color: #d1d5db;
+            opacity: 0;
+            filter: blur(10px);
+            transform: translateY(10px);
+            transition: opacity 1s ease 0.4s, transform 1s ease 0.4s, filter 1s ease 0.4s;
+            margin-bottom: 2rem;
+        }
+
+        .show-text #scene-title, 
+        .show-text #narrative-text {
+            opacity: 1;
+            transform: translateY(0);
+            filter: blur(0);
+        }
+
+        /* Controls & Choice Interface */
+        #controls {
+            margin-top: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1.5rem;
+            max-width: 1000px;
+            opacity: 0;
+            transition: opacity 0.8s ease 1s;
+        }
+
+        .show-text #controls {
+            opacity: 1;
+        }
+
+        #choice-grid {
+            display: none;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-next, .btn-choice {
+            background: rgba(20, 20, 20, 0.7);
+            color: var(--amber);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            padding: 10px 30px;
+            font-family: 'Pirata One', cursive;
+            font-size: 1.4rem;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            letter-spacing: 2px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            min-width: 220px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Hover Shine Effect */
+        .btn-next::after, .btn-choice::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+            transition: 0.5s;
+        }
+
+        .btn-next:hover::after, .btn-choice:hover::after {
+            left: 100%;
+        }
+
+        .btn-next:hover, .btn-choice:hover {
+            background: var(--amber);
+            color: black;
+            border-color: var(--amber);
+            box-shadow: 0 0 25px var(--amber-glow);
+            transform: translateY(-3px);
+        }
+
+        .btn-retire {
+            border-color: rgba(255, 68, 68, 0.4);
+            color: #ff6666;
+        }
+        .btn-retire:hover {
+            background: #cc0000;
+            color: white;
+            border-color: #ff4444;
+            box-shadow: 0 0 25px rgba(255, 68, 68, 0.6);
+        }
+
+        /* Rotation Icon */
+        .rotate-icon {
+            width: 64px;
+            height: 64px;
+            border: 3px solid var(--amber);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            animation: rotate-anim 2.5s infinite ease-in-out;
+        }
+
+        @keyframes rotate-anim {
+            0% { transform: rotate(0deg); }
+            50% { transform: rotate(-90deg); }
+            100% { transform: rotate(-90deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="rotate-overlay">
+        <div class="rotate-icon"></div>
+        <h2 style="font-family: 'Pirata One'; color: var(--amber); font-size: 3rem;">Turn Your Fate</h2>
+        <p style="font-size: 1.2rem;">Please rotate your device to landscape to continue your journey.</p>
+    </div>
+
+    <div id="game-container">
+        <img id="scene-image" src="" alt="">
+        
+        <div id="narrative-overlay">
+            <h1 id="scene-title"></h1>
+            <div id="narrative-text"></div>
+            
+            <!-- Dynamic Choice Grid -->
+            <div id="choice-grid">
+                <button class="btn-choice" onclick="triggerInteraction(4)">TALK TO BARTHO</button>
+                <button class="btn-choice" onclick="triggerInteraction(5)">SPEAK WITH ELARA</button>
+                <button class="btn-choice" onclick="triggerInteraction(6)">APPROACH THE TABLE</button>
+                <button class="btn-choice" onclick="triggerInteraction(7)">OBSERVE STRANGER</button>
+            </div>
+
+            <div id="controls">
+                <button id="btn-action" class="btn-next" onclick="handleMainAction()">CONTINUE</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Note: Filenames updated to .png as per project requirements
+        const gameData = [
+            {
+                id: 0,
+                title: "The Storm Approaches",
+                image: "TownStorm.png",
+                text: "The storm broke just as the fortress town of Blackwood came into view, its towers silhouetted against constant lightning strikes."
+            },
+            {
+                id: 1,
+                title: "The Stone Gates",
+                image: "GateNight.png",
+                text: "The driving rain turned the road into slick mud as you rushed toward the intimidating stone gate, seeking respite from the deluge."
+            },
+            {
+                id: 2,
+                title: "The Flickering Sign",
+                image: "TavernNight.png",
+                text: "Your goal became the glowing oil-lamp sign of 'The Weary Traveler Inn & Tavern', a promise of comfort in the dark."
+            },
+            {
+                id: 3,
+                title: "The Weary Traveler",
+                image: "Tavern.png",
+                text: "The main room is alive with warmth and low conversation. You stand at the threshold, considering your options before finding a place to rest.",
+                isHub: true
+            },
+            {
+                id: 4,
+                title: "The Innkeeper",
+                image: "Bartender.png",
+                text: "Bartho leans forward with professional warmth. 'Rough night out there, traveler. A hot stew and a dry bed? You've come to the right place.'",
+                isInteraction: true
+            },
+            {
+                id: 5,
+                title: "The Hearth",
+                image: "Barmaid.png",
+                text: "By the stone hearth, Elara tends a cauldron. She offers a kind smile. 'Warm yourself, friend. There's plenty of soup, and the fire won't go out tonight.'",
+                isInteraction: true
+            },
+            {
+                id: 6,
+                title: "The Common Room",
+                image: "Table.png",
+                text: "The warrior barely looks up from his ale, but the wizard catches your eye, his hands pulsing with a strange blue light as he whispers to his companion.",
+                isInteraction: true
+            },
+            {
+                id: 7,
+                title: "The Chilling Presence",
+                image: "Stranger.png",
+                text: "In the darkest corner, Malach the Scout watches the room like a hawk. He says nothing, but you feel his gaze linger on the wizard at the table.",
+                isInteraction: true
+            },
+            {
+                id: 8,
+                title: "A Night's Rest",
+                image: "Room.png",
+                text: "Finally, you find refuge in a small private room upstairs. The storm still rages outside, but for now, you are safe behind thick walls."
+            }
+        ];
+
+        let currentIndex = 0;
+        const imgElement = document.getElementById('scene-image');
+        const titleElement = document.getElementById('scene-title');
+        const textElement = document.getElementById('narrative-text');
+        const overlay = document.getElementById('narrative-overlay');
+        const choiceGrid = document.getElementById('choice-grid');
+        const actionBtn = document.getElementById('btn-action');
+
+        function renderScene(index) {
+            currentIndex = index;
+            const data = gameData[index];
+            
+            // Phase 1: Fade out current content
+            overlay.classList.remove('show-text');
+            imgElement.classList.remove('visible');
+
+            // Phase 2: Update data and fade in after delay
+            setTimeout(() => {
+                imgElement.src = data.image;
+                titleElement.innerText = data.title;
+                textElement.innerText = data.text;
+                
+                const onContentReady = () => {
+                    imgElement.classList.add('visible');
+                    
+                    // Delay narrative appearance for cinematic feel
+                    setTimeout(() => {
+                        overlay.classList.add('show-text');
+                        
+                        // Hub Logic (Choice Grid)
+                        if (data.isHub) {
+                            choiceGrid.style.display = 'flex';
+                            actionBtn.innerText = "RETIRE FOR THE NIGHT";
+                            actionBtn.classList.add('btn-retire');
+                        } else if (data.isInteraction) {
+                            choiceGrid.style.display = 'none';
+                            actionBtn.innerText = "RETURN TO COMMON ROOM";
+                            actionBtn.classList.remove('btn-retire');
+                        } else {
+                            choiceGrid.style.display = 'none';
+                            actionBtn.innerText = "CONTINUE";
+                            actionBtn.classList.remove('btn-retire');
+                        }
+                    }, 200);
+                };
+
+                // Image loading management
+                if (imgElement.complete) {
+                    onContentReady();
+                } else {
+                    imgElement.onload = onContentReady;
+                    imgElement.onerror = onContentReady; // Failsafe
+                }
+            }, 700);
+        }
+
+        function handleMainAction() {
+            const current = gameData[currentIndex];
+            
+            if (current.isInteraction) {
+                renderScene(3); // Return to Tavern Hub
+            } else if (current.isHub) {
+                renderScene(8); // Proceed to Private Room
+            } else if (currentIndex < gameData.length - 1) {
+                renderScene(currentIndex + 1); // Next Linear Scene
+            } else {
+                renderScene(0); // Loop to Start
+            }
+        }
+
+        function triggerInteraction(targetIndex) {
+            renderScene(targetIndex);
+        }
+
+        // Initialize first scene on load
+        window.onload = () => renderScene(0);
+    </script>
+</body>
+</html>
