@@ -39,6 +39,13 @@
             50% { opacity: 0.95; text-shadow: 0 0 10px var(--amber); }
         }
 
+        /* Fullscreen Pulse Animation */
+        @keyframes pulse-gold {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+
         /* Camera Animations */
         @keyframes pan-zoom-storm {
             0% { transform: scale(1.1) translate(0, 0); }
@@ -95,7 +102,7 @@
             height: 100%;
             object-fit: cover;
             object-position: center 30%; 
-            transition: opacity var(--trans-slow); /* Only opacity transition here, transform handled by animation */
+            transition: opacity var(--trans-slow); 
             opacity: 0;
             filter: brightness(0.8) contrast(1.1);
             transform: scale(1.1); 
@@ -103,7 +110,6 @@
 
         #scene-image.visible {
             opacity: 1;
-            /* Animation applied via JS */
         }
 
         /* Top Scene Title Container */
@@ -190,6 +196,13 @@
             width: 100%;
             max-width: 95%;
             pointer-events: auto;
+            
+            /* Force to bottom */
+            position: absolute;
+            bottom: 20px; 
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 60;
         }
         
         .show-text #choice-grid {
@@ -197,16 +210,16 @@
         }
 
         .btn-choice {
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.8); /* Darker background for readability */
             color: var(--amber);
-            border: 1px solid rgba(245, 158, 11, 0.3);
-            padding: 6px 16px; 
+            border: 1px solid rgba(245, 158, 11, 0.5);
+            padding: 8px 18px; 
             font-family: 'Pirata One', cursive;
-            font-size: 1.1rem;
+            font-size: 1.2rem;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             letter-spacing: 1px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.7);
             min-width: auto; 
             position: relative;
             overflow: hidden;
@@ -218,11 +231,11 @@
             color: black;
             border-color: var(--amber);
             box-shadow: 0 0 15px var(--amber-glow);
-            transform: translateY(-2px);
+            transform: translateY(-3px);
         }
 
         .btn-retire {
-            border-color: rgba(255, 68, 68, 0.4);
+            border-color: rgba(255, 68, 68, 0.6);
             color: #ff8888;
         }
         .btn-retire:hover {
@@ -325,7 +338,7 @@
             z-index: 100;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 16px; /* Increased gap */
         }
 
         .nav-btn {
@@ -341,6 +354,7 @@
             justify-content: center;
             transition: all 0.3s;
             backdrop-filter: blur(5px);
+            position: relative;
         }
 
         .nav-btn:hover {
@@ -361,6 +375,7 @@
             align-items: center;
             justify-content: center;
             transition: opacity 1s ease;
+            gap: 2rem;
         }
 
         #start-btn {
@@ -382,6 +397,29 @@
             color: black;
             box-shadow: 0 0 40px var(--amber);
             transform: scale(1.05);
+        }
+
+        #btn-fullscreen-start {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--amber);
+            border: 1px solid rgba(245, 158, 11, 0.5);
+            padding: 10px 25px;
+            font-family: 'Alegreya', serif;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: pulse-gold 2.5s infinite;
+        }
+
+        #btn-fullscreen-start:hover {
+            background: var(--amber);
+            color: black;
+            animation: none;
+            box-shadow: 0 0 20px var(--amber-glow);
         }
 
         /* Fade Out Curtain for End Scene */
@@ -486,14 +524,23 @@
 
     <!-- Start Screen -->
     <div id="start-screen">
-        <h1 style="font-family: 'Pirata One'; color: var(--amber); font-size: 4rem; margin-bottom: 2rem; text-shadow: 0 0 20px var(--amber-glow);">The Sanctuary</h1>
+        <h1 style="font-family: 'Pirata One'; color: var(--amber); font-size: 4rem; margin-bottom: 1rem; text-shadow: 0 0 20px var(--amber-glow);">The Sanctuary</h1>
+        
         <button id="start-btn" onclick="startGame()">Begin Journey</button>
+        
+        <!-- Fullscreen Option on Start Screen -->
+        <button id="btn-fullscreen-start" onclick="toggleFullScreen()" title="Enter Fullscreen">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+            </svg>
+            Fullscreen (Best Experience)
+        </button>
     </div>
 
     <!-- Final Fade Curtain -->
     <div id="fade-curtain"></div>
 
-    <!-- Top Left Navigation -->
+    <!-- Top Left Navigation (Fullscreen Removed) -->
     <div id="nav-top-left">
         <!-- QR Code Button -->
         <button class="nav-btn" onclick="showQR()" title="View QR Code">
@@ -502,13 +549,6 @@
                 <rect x="14" y="3" width="7" height="7"></rect>
                 <rect x="14" y="14" width="7" height="7"></rect>
                 <rect x="3" y="14" width="7" height="7"></rect>
-            </svg>
-        </button>
-        
-        <!-- Fullscreen Button -->
-        <button class="nav-btn" onclick="toggleFullScreen()" title="Toggle Fullscreen" id="btn-fullscreen">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
             </svg>
         </button>
     </div>
@@ -901,13 +941,8 @@
         }
 
         function updateFullscreenIcon() {
-            const btn = document.getElementById('btn-fullscreen');
-            const isFull = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
-            if (isFull) {
-                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>';
-            } else {
-                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>';
-            }
+            // No longer updating an on-screen button since it's on the start screen
+            // But we keep the function structure if needed for future
         }
 
         document.addEventListener('fullscreenchange', updateFullscreenIcon);
