@@ -30,12 +30,29 @@
             justify-content: center;
             align-items: center;
             touch-action: none;
+            user-select: none;
         }
 
         /* Ambient Flicker Animation for Titles */
         @keyframes flicker {
-            0%, 100% { opacity: 1; text-shadow: 0 0 10px var(--amber-glow); }
-            50% { opacity: 0.85; text-shadow: 0 0 15px var(--amber); }
+            0%, 100% { opacity: 1; text-shadow: 0 0 20px var(--amber-glow); }
+            50% { opacity: 0.95; text-shadow: 0 0 10px var(--amber); }
+        }
+
+        /* Camera Animations */
+        @keyframes pan-zoom-storm {
+            0% { transform: scale(1.1) translate(0, 0); }
+            100% { transform: scale(1.2) translate(-2%, 2%); }
+        }
+
+        @keyframes gentle-push {
+            0% { transform: scale(1.05); }
+            100% { transform: scale(1.15); }
+        }
+
+        @keyframes gentle-pan {
+            0% { transform: scale(1.1) translateX(0); }
+            100% { transform: scale(1.1) translateX(-3%); }
         }
 
         #rotate-overlay {
@@ -68,7 +85,7 @@
             content: "";
             position: absolute;
             inset: 0;
-            background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.8) 100%);
+            background: radial-gradient(circle, transparent 50%, rgba(0,0,0,0.6) 100%);
             pointer-events: none;
             z-index: 5;
         }
@@ -77,60 +94,81 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transition: opacity var(--trans-slow), transform 6s linear; 
+            object-position: center 30%; 
+            transition: opacity var(--trans-slow); /* Only opacity transition here, transform handled by animation */
             opacity: 0;
-            filter: brightness(0.7) contrast(1.1);
+            filter: brightness(0.8) contrast(1.1);
             transform: scale(1.1); 
         }
 
         #scene-image.visible {
             opacity: 1;
-            transform: scale(1);
+            /* Animation applied via JS */
         }
 
-        #narrative-overlay {
+        /* Top Scene Title Container */
+        #top-title-container {
             position: absolute;
-            bottom: 0;
+            top: 30px;
             left: 0;
             right: 0;
-            padding: 5rem 2rem 4rem 2rem;
-            background: linear-gradient(to top, 
-                black 0%, 
-                rgba(0,0,0,0.95) 40%, 
-                rgba(0,0,0,0.6) 70%, 
-                transparent 100%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
             text-align: center;
-            z-index: 10;
+            z-index: 15;
+            pointer-events: none;
+            padding: 0 80px; 
         }
 
         #scene-title {
             font-family: 'Pirata One', cursive;
             color: var(--amber);
-            font-size: clamp(2rem, 8vw, 3.5rem);
-            margin-bottom: 0.5rem;
-            letter-spacing: 3px;
+            font-size: clamp(3rem, 6vw, 4.5rem); 
+            margin: 0;
+            letter-spacing: 2px;
             text-shadow: 0 4px 10px rgba(0,0,0,1);
             opacity: 0;
-            filter: blur(5px);
-            transform: translateY(20px);
-            transition: opacity var(--trans-slow), transform var(--trans-slow), filter var(--trans-slow);
-            animation: flicker 4s infinite alternate ease-in-out;
+            filter: drop-shadow(0 0 8px rgba(0,0,0,0.8)); 
+            transform: translateY(-20px);
+            transition: opacity var(--trans-slow), transform var(--trans-slow);
+            animation: flicker 5s infinite alternate ease-in-out;
+        }
+
+        /* Narrative Overlay (Bottom Only) */
+        #narrative-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: auto;
+            max-height: 40vh; 
+            padding: 2rem 1rem 3.5rem 1rem; 
+            background: none; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            justify-content: flex-end;
+            z-index: 10;
+            pointer-events: none; 
         }
 
         #narrative-text {
-            font-size: clamp(1.1rem, 3vw, 1.5rem);
-            line-height: 1.6;
-            max-width: 850px;
-            text-shadow: 2px 2px 4px #000;
-            color: #d1d5db;
+            font-size: clamp(1.2rem, 2.5vw, 1.6rem); 
+            line-height: 1.5;
+            max-width: 1000px;
+            text-shadow: 
+                0 2px 4px #000, 
+                0 0 10px #000,
+                0 0 20px #000,
+                0 0 30px #000;
+            color: #e0e0e0;
             opacity: 0;
             filter: blur(10px);
             transform: translateY(10px);
             transition: opacity 1s ease 0.4s, transform 1s ease 0.4s, filter 1s ease 0.4s;
-            margin-bottom: 2rem;
+            margin-bottom: 0.8rem;
+            cursor: pointer;
+            font-weight: 500;
+            pointer-events: auto; 
         }
 
         .show-text #scene-title, 
@@ -140,79 +178,163 @@
             filter: blur(0);
         }
 
-        /* Controls & Choice Interface */
-        #controls {
-            margin-top: 1rem;
-            display: flex;
-            flex-wrap: wrap;
+        /* Choice Grid */
+        #choice-grid {
+            display: none;
+            gap: 0.8rem;
+            margin-bottom: 0.5rem;
             justify-content: center;
-            gap: 1.5rem;
-            max-width: 1000px;
+            flex-wrap: wrap; 
             opacity: 0;
-            transition: opacity 0.8s ease 1s;
+            transition: opacity 0.5s ease;
+            width: 100%;
+            max-width: 95%;
+            pointer-events: auto;
         }
-
-        .show-text #controls {
+        
+        .show-text #choice-grid {
             opacity: 1;
         }
 
-        #choice-grid {
-            display: none;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .btn-next, .btn-choice {
-            background: rgba(20, 20, 20, 0.7);
+        .btn-choice {
+            background: rgba(0, 0, 0, 0.6);
             color: var(--amber);
             border: 1px solid rgba(245, 158, 11, 0.3);
-            padding: 10px 30px;
+            padding: 6px 16px; 
             font-family: 'Pirata One', cursive;
-            font-size: 1.4rem;
+            font-size: 1.1rem;
             cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            letter-spacing: 2px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            min-width: 220px;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            letter-spacing: 1px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            min-width: auto; 
             position: relative;
             overflow: hidden;
+            white-space: nowrap;
         }
 
-        .btn-next:hover, .btn-choice:hover {
+        .btn-choice:hover {
             background: var(--amber);
             color: black;
             border-color: var(--amber);
-            box-shadow: 0 0 25px var(--amber-glow);
-            transform: translateY(-3px);
+            box-shadow: 0 0 15px var(--amber-glow);
+            transform: translateY(-2px);
         }
 
         .btn-retire {
             border-color: rgba(255, 68, 68, 0.4);
-            color: #ff6666;
+            color: #ff8888;
         }
         .btn-retire:hover {
             background: #cc0000;
             color: white;
             border-color: #ff4444;
-            box-shadow: 0 0 25px rgba(255, 68, 68, 0.6);
+            box-shadow: 0 0 15px rgba(255, 68, 68, 0.6);
         }
 
-        /* Top Left Navigation (Home/QR) */
+        /* Progress Bar Styles */
+        #progress-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 20;
+            display: none; 
+        }
+
+        #progress-bar {
+            height: 100%;
+            background: var(--amber);
+            width: 0%;
+            position: relative;
+            box-shadow: 0 0 10px var(--amber);
+        }
+
+        #progress-bar::after {
+            content: '';
+            position: absolute;
+            right: -2px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #fff, 0 0 20px var(--amber);
+        }
+
+        /* Bottom Controls - Universal Style */
+        .bottom-controls-cluster {
+            position: absolute;
+            bottom: 12px; 
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 50; 
+            background: rgba(0,0,0,0.6); 
+            padding: 8px 16px;
+            border-radius: 30px;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            transition: opacity 0.5s, transform 0.5s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            pointer-events: auto; 
+        }
+
+        #narrative-overlay.show-text ~ .bottom-controls-cluster {
+            opacity: 1;
+        }
+
+        /* Positioning the clusters */
+        #controls-left { left: 20px; }
+        #controls-center { left: 50%; transform: translateX(-50%); }
+        #controls-right { right: 20px; }
+
+        .ctrl-btn {
+            background: transparent;
+            border: none;
+            color: var(--amber);
+            cursor: pointer;
+            padding: 2px;
+            transition: transform 0.2s, color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ctrl-btn:hover {
+            transform: scale(1.15);
+            color: #fff;
+            filter: drop-shadow(0 0 5px var(--amber));
+        }
+
+        .ctrl-btn svg {
+            width: 28px;
+            height: 28px;
+            fill: currentColor; 
+        }
+
+        /* Top Left Navigation */
         #nav-top-left {
             position: absolute;
             top: 20px;
             left: 20px;
             z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
-        .btn-home {
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(245, 158, 11, 0.3);
+        .nav-btn {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(245, 158, 11, 0.4);
             color: var(--amber);
-            padding: 10px;
-            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -221,10 +343,56 @@
             backdrop-filter: blur(5px);
         }
 
-        .btn-home:hover {
+        .nav-btn:hover {
             background: var(--amber);
             color: black;
             box-shadow: 0 0 15px var(--amber);
+            transform: scale(1.05);
+        }
+
+        /* Start Screen */
+        #start-screen {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 1s ease;
+        }
+
+        #start-btn {
+            background: transparent;
+            color: var(--amber);
+            border: 2px solid var(--amber);
+            padding: 15px 40px;
+            font-family: 'Pirata One', cursive;
+            font-size: 2.5rem;
+            cursor: pointer;
+            transition: all 0.4s;
+            letter-spacing: 3px;
+            box-shadow: 0 0 15px var(--amber-glow);
+            text-transform: uppercase;
+        }
+
+        #start-btn:hover {
+            background: var(--amber);
+            color: black;
+            box-shadow: 0 0 40px var(--amber);
+            transform: scale(1.05);
+        }
+
+        /* Fade Out Curtain for End Scene */
+        #fade-curtain {
+            position: fixed;
+            inset: 0;
+            background: black;
+            z-index: 3000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 3s ease-in-out;
         }
 
         /* QR Modal */
@@ -316,14 +484,38 @@
         <p style="font-size: 1.2rem;">Please rotate your device to landscape to continue your journey.</p>
     </div>
 
-    <!-- Home/QR Button -->
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <h1 style="font-family: 'Pirata One'; color: var(--amber); font-size: 4rem; margin-bottom: 2rem; text-shadow: 0 0 20px var(--amber-glow);">The Sanctuary</h1>
+        <button id="start-btn" onclick="startGame()">Begin Journey</button>
+    </div>
+
+    <!-- Final Fade Curtain -->
+    <div id="fade-curtain"></div>
+
+    <!-- Top Left Navigation -->
     <div id="nav-top-left">
-        <button class="btn-home" onclick="showQR()" title="View Realm Link">
+        <!-- QR Code Button -->
+        <button class="nav-btn" onclick="showQR()" title="View QR Code">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
             </svg>
         </button>
+        
+        <!-- Fullscreen Button -->
+        <button class="nav-btn" onclick="toggleFullScreen()" title="Toggle Fullscreen" id="btn-fullscreen">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Top Center Title Area -->
+    <div id="top-title-container">
+        <h1 id="scene-title"></h1>
     </div>
 
     <!-- QR Code Modal -->
@@ -332,7 +524,6 @@
             <h3>Share the Journey</h3>
             <p>Scan to return to the town entrance or share with fellow travelers.</p>
             <div class="qr-frame">
-                <!-- QR Code generated linking to your specific URL -->
                 <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://augmentedthinker.github.io/RPG-TOWN/&bgcolor=ffffff" alt="QR Code">
             </div>
             <br>
@@ -343,20 +534,60 @@
     <div id="game-container">
         <img id="scene-image" src="" alt="">
         
-        <div id="narrative-overlay">
-            <h1 id="scene-title"></h1>
+        <!-- Interactive Overlay: Clicking skips text/advances -->
+        <div id="narrative-overlay" onclick="handleManualAdvance(event)">
             <div id="narrative-text"></div>
             
-            <div id="choice-grid">
-                <button class="btn-choice" onclick="triggerInteraction(4)">TALK TO BARTHO</button>
-                <button class="btn-choice" onclick="triggerInteraction(5)">SPEAK WITH ELARA</button>
-                <button class="btn-choice" onclick="triggerInteraction(6)">APPROACH THE TABLE</button>
-                <button class="btn-choice" onclick="triggerInteraction(7)">OBSERVE STRANGER</button>
+            <div id="choice-grid" onclick="event.stopPropagation()">
+                <button class="btn-choice" onclick="triggerInteraction(4)">Talk to Bartho</button>
+                <button class="btn-choice" onclick="triggerInteraction(5)">Speak with Elara</button>
+                <button class="btn-choice" onclick="triggerInteraction(6)">Approach Table</button>
+                <button class="btn-choice" onclick="triggerInteraction(7)">Observe Stranger</button>
+                <button class="btn-choice btn-retire" onclick="handleMainAction()">Retire</button>
             </div>
+        </div>
 
-            <div id="controls">
-                <button id="btn-action" class="btn-next" onclick="handleMainAction()">CONTINUE</button>
-            </div>
+        <!-- Bottom Controls: Left (Back) -->
+        <div id="controls-left" class="bottom-controls-cluster">
+            <button class="ctrl-btn" onclick="goBack(event)" title="Previous Scene">
+                <svg viewBox="0 0 24 24">
+                    <line x1="19" y1="12" x2="5" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <polyline points="12 19 5 12 12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Bottom Controls: Center (Restart, Play/Pause) -->
+        <div id="controls-center" class="bottom-controls-cluster">
+            <!-- Restart Button -->
+            <button class="ctrl-btn" onclick="restartScene(event)" title="Restart Current Scene">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
+                </svg>
+            </button>
+            
+            <!-- Play/Pause Button -->
+            <button class="ctrl-btn" onclick="togglePause(event)" id="btn-pause" title="Pause/Play">
+                 <svg viewBox="0 0 24 24">
+                    <rect x="6" y="4" width="4" height="16"></rect>
+                    <rect x="14" y="4" width="4" height="16"></rect>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Bottom Controls: Right (Next/Fast Forward) -->
+        <div id="controls-right" class="bottom-controls-cluster">
+            <button class="ctrl-btn" onclick="handleManualAdvance(event)" title="Next Scene">
+                 <svg viewBox="0 0 24 24">
+                    <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <polyline points="12 5 19 12 12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Progress Bar at Bottom -->
+        <div id="progress-container">
+            <div id="progress-bar"></div>
         </div>
     </div>
 
@@ -366,60 +597,70 @@
                 id: 0,
                 title: "The Storm Approaches",
                 image: "TownStorm.png",
-                text: "The storm broke just as the fortress town of Blackwood came into view, its towers silhouetted against constant lightning strikes."
+                text: "The storm broke just as the fortress town of Blackwood came into view, its towers silhouetted against constant lightning strikes.",
+                anim: "pan-zoom-storm 10s ease-out forwards"
             },
             {
                 id: 1,
                 title: "The Stone Gates",
                 image: "GateNight.png",
-                text: "The driving rain turned the road into slick mud as you rushed toward the intimidating stone gate, seeking respite from the deluge."
+                text: "The driving rain turned the road into slick mud as you rushed toward the intimidating stone gate, seeking respite from the deluge.",
+                anim: "gentle-push 10s ease-in-out forwards"
             },
             {
                 id: 2,
                 title: "The Flickering Sign",
                 image: "TavernNight.png",
-                text: "Your goal became the glowing oil-lamp sign of 'The Weary Traveler Inn & Tavern', a promise of comfort in the dark."
+                text: "Your goal became the glowing oil-lamp sign of 'The Weary Traveler Inn & Tavern', a promise of comfort in the dark.",
+                anim: "gentle-pan 10s ease-in-out forwards"
             },
             {
                 id: 3,
                 title: "The Weary Traveler",
                 image: "Tavern.png",
-                text: "The main room is alive with warmth and low conversation. You stand at the threshold, considering your options before finding a place to rest.",
-                isHub: true
+                text: "The main room is alive with warmth and low conversation. You stand at the threshold, considering your options.",
+                isHub: true,
+                anim: "gentle-push 15s ease-in-out forwards"
             },
             {
                 id: 4,
                 title: "The Innkeeper",
                 image: "Bartender.png",
                 text: "Bartho leans forward with professional warmth. 'Rough night out there, traveler. A hot stew and a dry bed? You've come to the right place.'",
-                isInteraction: true
+                isInteraction: true,
+                anim: "gentle-push 12s ease-out forwards"
             },
             {
                 id: 5,
                 title: "The Hearth",
                 image: "Barmaid.png",
                 text: "By the stone hearth, Elara tends a cauldron. She offers a kind smile. 'Warm yourself, friend. There's plenty of soup, and the fire won't go out tonight.'",
-                isInteraction: true
+                isInteraction: true,
+                anim: "gentle-push 12s ease-out forwards"
             },
             {
                 id: 6,
                 title: "The Common Room",
                 image: "Table.png",
                 text: "The warrior barely looks up from his ale, but the wizard catches your eye, his hands pulsing with a strange blue light as he whispers to his companion.",
-                isInteraction: true
+                isInteraction: true,
+                anim: "gentle-pan 12s ease-in-out forwards"
             },
             {
                 id: 7,
                 title: "The Chilling Presence",
                 image: "Stranger.png",
                 text: "In the darkest corner, Malach the Scout watches the room like a hawk. He says nothing, but you feel his gaze linger on the wizard at the table.",
-                isInteraction: true
+                isInteraction: true,
+                anim: "gentle-push 12s ease-out forwards"
             },
             {
                 id: 8,
                 title: "A Night's Rest",
                 image: "Room.png",
-                text: "Finally, you find refuge in a small private room upstairs. The storm still rages outside, but for now, you are safe behind thick walls."
+                text: "Finally, you find refuge in a small private room upstairs. The storm still rages outside, but for now, you are safe behind thick walls.",
+                anim: "gentle-push 10s ease-out forwards",
+                isFinal: true
             }
         ];
 
@@ -429,14 +670,43 @@
         const textElement = document.getElementById('narrative-text');
         const overlay = document.getElementById('narrative-overlay');
         const choiceGrid = document.getElementById('choice-grid');
-        const actionBtn = document.getElementById('btn-action');
+        const progressBar = document.getElementById('progress-bar');
+        const progressContainer = document.getElementById('progress-container');
+        const btnPause = document.getElementById('btn-pause');
+        const bottomControls = document.querySelectorAll('.bottom-controls-cluster');
+        const startScreen = document.getElementById('start-screen');
+        const fadeCurtain = document.getElementById('fade-curtain');
+
+        // Timer Logic
+        let timer = null;
+        let progress = 0;
+        let isPaused = false;
+        const SCENE_DURATION = 10000; // 10 seconds
+        const UPDATE_INTERVAL = 50;   
+
+        function startGame() {
+            startScreen.style.opacity = '0';
+            setTimeout(() => {
+                startScreen.style.display = 'none';
+                renderScene(0); // Start the first scene logic only after click
+            }, 1000);
+        }
 
         function renderScene(index) {
+            stopTimer();
+            progress = 0;
+            progressBar.style.width = '0%';
+            
             currentIndex = index;
             const data = gameData[index];
             
             overlay.classList.remove('show-text');
             imgElement.classList.remove('visible');
+            titleElement.style.opacity = '0';
+            
+            // Reset Animation by clearing style
+            imgElement.style.animation = 'none';
+            imgElement.offsetHeight; /* trigger reflow */
 
             setTimeout(() => {
                 imgElement.src = data.image;
@@ -445,23 +715,38 @@
                 
                 const onContentReady = () => {
                     imgElement.classList.add('visible');
+                    // Apply Specific Animation
+                    imgElement.style.animation = data.anim; 
                     
                     setTimeout(() => {
                         overlay.classList.add('show-text');
+                        titleElement.style.opacity = '1'; 
                         
                         if (data.isHub) {
                             choiceGrid.style.display = 'flex';
-                            actionBtn.innerText = "RETIRE FOR THE NIGHT";
-                            actionBtn.classList.add('btn-retire');
-                        } else if (data.isInteraction) {
-                            choiceGrid.style.display = 'none';
-                            actionBtn.innerText = "RETURN TO COMMON ROOM";
-                            actionBtn.classList.remove('btn-retire');
+                            setTimeout(() => { choiceGrid.style.opacity = '1'; }, 50);
+                            
+                            progressContainer.style.display = 'none'; 
+                            document.getElementById('controls-center').style.opacity = '0';
+                            document.getElementById('controls-right').style.opacity = '0';
+                            document.getElementById('controls-center').style.pointerEvents = 'none';
+                            document.getElementById('controls-right').style.pointerEvents = 'none';
                         } else {
                             choiceGrid.style.display = 'none';
-                            actionBtn.innerText = "CONTINUE";
-                            actionBtn.classList.remove('btn-retire');
+                            choiceGrid.style.opacity = '0'; 
+                            progressContainer.style.display = 'block'; 
+                            
+                            document.getElementById('controls-center').style.opacity = '1';
+                            document.getElementById('controls-right').style.opacity = '1';
+                            document.getElementById('controls-center').style.pointerEvents = 'auto';
+                            document.getElementById('controls-right').style.pointerEvents = 'auto';
+                            
+                            if (!isPaused) {
+                                startTimer(); 
+                            }
+                            updatePauseIcon(); 
                         }
+
                     }, 200);
                 };
 
@@ -474,16 +759,106 @@
             }, 700);
         }
 
+        function startTimer() {
+            if (timer) clearInterval(timer);
+            
+            timer = setInterval(() => {
+                if (isPaused) return;
+
+                progress += (UPDATE_INTERVAL / SCENE_DURATION) * 100;
+                progressBar.style.width = `${progress}%`;
+
+                if (progress >= 100) {
+                    stopTimer();
+                    // Check if final scene
+                    if (gameData[currentIndex].isFinal) {
+                        endGame();
+                    } else {
+                        handleMainAction(); 
+                    }
+                }
+            }, UPDATE_INTERVAL);
+        }
+
+        function endGame() {
+            // Fade to black
+            fadeCurtain.style.opacity = '1';
+            // Stop interaction
+            document.getElementById('controls-left').style.display = 'none';
+            document.getElementById('controls-center').style.display = 'none';
+            document.getElementById('controls-right').style.display = 'none';
+            document.getElementById('nav-top-left').style.display = 'none';
+        }
+
+        function stopTimer() {
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+            }
+        }
+
+        function togglePause(event) {
+            if(event) event.stopPropagation(); 
+            
+            isPaused = !isPaused;
+            updatePauseIcon();
+
+            if (isPaused) {
+                stopTimer();
+            } else {
+                if (!gameData[currentIndex].isHub) {
+                    startTimer(); 
+                }
+            }
+        }
+
+        function updatePauseIcon() {
+            const icon = isPaused 
+                ? '<svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>' 
+                : '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>'; 
+            btnPause.innerHTML = icon;
+        }
+        
+        function goBack(event) {
+            if(event) event.stopPropagation();
+            const current = gameData[currentIndex];
+            if (current.isInteraction || currentIndex === 8) {
+                renderScene(3);
+            } else if (currentIndex > 0) {
+                renderScene(currentIndex - 1);
+            }
+        }
+
+        function restartScene(event) {
+            if(event) event.stopPropagation();
+            renderScene(currentIndex);
+        }
+
+        function handleManualAdvance(event) {
+            if(event) event.stopPropagation();
+            if (gameData[currentIndex].isHub) return; 
+            
+            stopTimer();
+            
+            if (gameData[currentIndex].isFinal) {
+                endGame(); // End if manual advance on final scene
+            } else {
+                handleMainAction();
+            }
+        }
+
         function handleMainAction() {
             const current = gameData[currentIndex];
             if (current.isInteraction) {
-                renderScene(3);
+                renderScene(3); 
             } else if (current.isHub) {
-                renderScene(8);
+                renderScene(8); 
             } else if (currentIndex < gameData.length - 1) {
                 renderScene(currentIndex + 1);
             } else {
-                renderScene(0);
+                // Previously looped to 0, now should be handled by isFinal check in timer
+                // But as fallback for linear loop safeguard
+                // renderScene(0); 
             }
         }
 
@@ -493,21 +868,55 @@
 
         function showQR() {
             document.getElementById('qr-modal').classList.add('active');
+            if (!isPaused) togglePause();
         }
 
         function hideQR() {
             document.getElementById('qr-modal').classList.remove('active');
         }
 
-        window.onload = () => renderScene(0);
-    </script>
-
-    <style>
-        @keyframes rotate-anim {
-            0% { transform: rotate(0deg); }
-            50% { transform: rotate(-90deg); }
-            100% { transform: rotate(-90deg); }
+        function toggleFullScreen() {
+            if (!document.fullscreenElement &&    
+                !document.mozFullScreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement ) {  
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.documentElement.msRequestFullscreen) {
+                    document.documentElement.msRequestFullscreen();
+                } else if (document.documentElement.mozRequestFullScreen) {
+                    document.documentElement.mozRequestFullScreen();
+                } else if (document.documentElement.webkitRequestFullscreen) {
+                    document.documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            }
         }
-    </style>
+
+        function updateFullscreenIcon() {
+            const btn = document.getElementById('btn-fullscreen');
+            const isFull = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+            if (isFull) {
+                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>';
+            } else {
+                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>';
+            }
+        }
+
+        document.addEventListener('fullscreenchange', updateFullscreenIcon);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+        document.addEventListener('mozfullscreenchange', updateFullscreenIcon);
+        document.addEventListener('MSFullscreenChange', updateFullscreenIcon);
+
+        // Do NOT auto-start renderScene(0). Wait for user click.
+        // window.onload = () => renderScene(0); 
+    </script>
 </body>
-    </html>
+</html>
