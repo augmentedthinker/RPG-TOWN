@@ -3,12 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>The Sanctuary of the Weary Traveler</title>
+    <title>The Sanctuary & Polyhedral Engine</title>
     
-    <!-- Custom fonts from your Intro: Pirata One (Titles) and Alegreya (Body) -->
     <link href="https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700&family=Pirata+One&display=swap" rel="stylesheet">
 
+    <script type="importmap">
+        { "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+            "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+        }}
+    </script>
+
     <style>
+        /* --- GAME STYLES --- */
         :root {
             --amber: #f59e0b;
             --amber-glow: rgba(245, 158, 11, 0.6);
@@ -26,20 +34,17 @@
             color: #e0e0e0;
             font-family: 'Alegreya', serif;
             overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             touch-action: none;
             user-select: none;
         }
 
-        /* Ambient Flicker Animation for Titles */
+        /* Ambient Flicker Animation */
         @keyframes flicker {
             0%, 100% { opacity: 1; text-shadow: 0 0 20px var(--amber-glow); }
             50% { opacity: 0.95; text-shadow: 0 0 10px var(--amber); }
         }
 
-        /* Fullscreen Pulse Animation */
+        /* Pulse Animation */
         @keyframes pulse-gold {
             0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
@@ -51,467 +56,317 @@
             0% { transform: scale(1.1) translate(0, 0); }
             100% { transform: scale(1.2) translate(-2%, 2%); }
         }
-
         @keyframes gentle-push {
             0% { transform: scale(1.05); }
             100% { transform: scale(1.15); }
         }
-
         @keyframes gentle-pan {
             0% { transform: scale(1.1) translateX(0); }
             100% { transform: scale(1.1) translateX(-3%); }
         }
 
         #rotate-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 1000;
-            background: black;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 2rem;
+            position: fixed; inset: 0; z-index: 1000; background: black;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 2rem;
         }
-
-        @media (orientation: portrait) {
-            #rotate-overlay { display: flex; }
-        }
+        @media (orientation: portrait) { #rotate-overlay { display: flex; } }
 
         #game-container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            background: #000;
-            overflow: hidden;
+            position: relative; width: 100vw; height: 100vh;
+            background: #000; overflow: hidden;
         }
-
-        /* Vignette Overlay for Depth */
         #game-container::after {
-            content: "";
-            position: absolute;
-            inset: 0;
+            content: ""; position: absolute; inset: 0;
             background: radial-gradient(circle, transparent 50%, rgba(0,0,0,0.6) 100%);
-            pointer-events: none;
-            z-index: 5;
+            pointer-events: none; z-index: 5;
         }
 
         #scene-image {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            object-position: center 30%; 
-            transition: opacity var(--trans-slow); 
-            opacity: 0;
-            filter: brightness(0.8) contrast(1.1);
-            transform: scale(1.1); 
+            width: 100%; height: 100%; object-fit: cover; object-position: center 30%; 
+            transition: opacity var(--trans-slow); opacity: 0;
+            filter: brightness(0.8) contrast(1.1); transform: scale(1.1); 
         }
+        #scene-image.visible { opacity: 1; }
 
-        #scene-image.visible {
-            opacity: 1;
-        }
-
-        /* Top Scene Title Container */
         #top-title-container {
-            position: absolute;
-            top: 30px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            z-index: 15;
-            pointer-events: none;
-            padding: 0 80px; 
+            position: absolute; top: 30px; left: 0; right: 0;
+            text-align: center; z-index: 15; pointer-events: none; padding: 0 80px; 
         }
-
         #scene-title {
-            font-family: 'Pirata One', cursive;
-            color: var(--amber);
-            font-size: clamp(3rem, 6vw, 4.5rem); 
-            margin: 0;
-            letter-spacing: 2px;
-            text-shadow: 0 4px 10px rgba(0,0,0,1);
-            opacity: 0;
+            font-family: 'Pirata One', cursive; color: var(--amber);
+            font-size: clamp(3rem, 6vw, 4.5rem); margin: 0; letter-spacing: 2px;
+            text-shadow: 0 4px 10px rgba(0,0,0,1); opacity: 0;
             filter: drop-shadow(0 0 8px rgba(0,0,0,0.8)); 
             transform: translateY(-20px);
             transition: opacity var(--trans-slow), transform var(--trans-slow);
             animation: flicker 5s infinite alternate ease-in-out;
         }
 
-        /* Narrative Overlay (Bottom Only) */
         #narrative-overlay {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: auto;
-            max-height: 40vh; 
-            padding: 2rem 1rem 3.5rem 1rem; 
-            background: none; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            justify-content: flex-end;
-            z-index: 10;
-            pointer-events: none; 
+            position: absolute; bottom: 0; left: 0; right: 0;
+            height: auto; max-height: 40vh; padding: 2rem 1rem 3.5rem 1rem; 
+            display: flex; flex-direction: column; align-items: center;
+            text-align: center; justify-content: flex-end; z-index: 10; pointer-events: none; 
         }
-
         #narrative-text {
-            font-size: clamp(1.2rem, 2.5vw, 1.6rem); 
-            line-height: 1.5;
-            max-width: 1000px;
-            text-shadow: 
-                0 2px 4px #000, 
-                0 0 10px #000,
-                0 0 20px #000,
-                0 0 30px #000;
-            color: #e0e0e0;
-            opacity: 0;
-            filter: blur(10px);
+            font-size: clamp(1.2rem, 2.5vw, 1.6rem); line-height: 1.5; max-width: 1000px;
+            text-shadow: 0 2px 4px #000, 0 0 10px #000, 0 0 20px #000;
+            color: #e0e0e0; opacity: 0; filter: blur(10px);
             transform: translateY(10px);
             transition: opacity 1s ease 0.4s, transform 1s ease 0.4s, filter 1s ease 0.4s;
-            margin-bottom: 0.8rem;
-            cursor: pointer;
-            font-weight: 500;
-            pointer-events: auto; 
+            margin-bottom: 0.8rem; cursor: pointer; font-weight: 500; pointer-events: auto; 
+        }
+        .show-text #scene-title, .show-text #narrative-text {
+            opacity: 1; transform: translateY(0); filter: blur(0);
         }
 
-        .show-text #scene-title, 
-        .show-text #narrative-text {
-            opacity: 1;
-            transform: translateY(0);
-            filter: blur(0);
-        }
-
-        /* Choice Grid */
         #choice-grid {
-            display: none;
-            gap: 0.8rem;
-            margin-bottom: 0.5rem;
-            justify-content: center;
-            flex-wrap: wrap; 
-            opacity: 0;
-            transition: opacity 0.5s ease;
-            width: 100%;
-            max-width: 95%;
-            pointer-events: auto;
-            
-            /* Force to bottom */
-            position: absolute;
-            bottom: 20px; 
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 60;
+            display: none; gap: 0.8rem; margin-bottom: 0.5rem; justify-content: center;
+            flex-wrap: wrap; opacity: 0; transition: opacity 0.5s ease;
+            width: 100%; max-width: 95%; pointer-events: auto;
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 60;
         }
-        
-        .show-text #choice-grid {
-            opacity: 1;
-        }
+        .show-text #choice-grid { opacity: 1; }
 
         .btn-choice {
-            background: rgba(0, 0, 0, 0.8); /* Darker background for readability */
-            color: var(--amber);
-            border: 1px solid rgba(245, 158, 11, 0.5);
-            padding: 8px 18px; 
-            font-family: 'Pirata One', cursive;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            letter-spacing: 1px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.7);
-            min-width: auto; 
-            position: relative;
-            overflow: hidden;
-            white-space: nowrap;
+            background: rgba(0, 0, 0, 0.8); color: var(--amber);
+            border: 1px solid rgba(245, 158, 11, 0.5); padding: 8px 18px; 
+            font-family: 'Pirata One', cursive; font-size: 1.2rem; cursor: pointer;
+            transition: all 0.3s; letter-spacing: 1px; box-shadow: 0 4px 10px rgba(0,0,0,0.7);
         }
-
         .btn-choice:hover {
-            background: var(--amber);
-            color: black;
-            border-color: var(--amber);
-            box-shadow: 0 0 15px var(--amber-glow);
-            transform: translateY(-3px);
+            background: var(--amber); color: black; border-color: var(--amber);
+            box-shadow: 0 0 15px var(--amber-glow); transform: translateY(-3px);
         }
+        .btn-retire { border-color: rgba(255, 68, 68, 0.6); color: #ff8888; }
+        .btn-retire:hover { background: #cc0000; color: white; }
 
-        .btn-retire {
-            border-color: rgba(255, 68, 68, 0.6);
-            color: #ff8888;
-        }
-        .btn-retire:hover {
-            background: #cc0000;
-            color: white;
-            border-color: #ff4444;
-            box-shadow: 0 0 15px rgba(255, 68, 68, 0.6);
-        }
-
-        /* Progress Bar Styles */
         #progress-container {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.1);
-            z-index: 20;
-            display: none; 
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 4px;
+            background: rgba(255, 255, 255, 0.1); z-index: 20; display: none; 
         }
-
         #progress-bar {
-            height: 100%;
-            background: var(--amber);
-            width: 0%;
-            position: relative;
-            box-shadow: 0 0 10px var(--amber);
+            height: 100%; background: var(--amber); width: 0%;
+            position: relative; box-shadow: 0 0 10px var(--amber);
         }
 
-        #progress-bar::after {
-            content: '';
-            position: absolute;
-            right: -2px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 8px;
-            height: 8px;
-            background: #fff;
-            border-radius: 50%;
-            box-shadow: 0 0 10px #fff, 0 0 20px var(--amber);
-        }
-
-        /* Bottom Controls - Universal Style */
         .bottom-controls-cluster {
-            position: absolute;
-            bottom: 12px; 
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            z-index: 50; 
-            background: rgba(0,0,0,0.6); 
-            padding: 8px 16px;
-            border-radius: 30px;
-            border: 1px solid rgba(245, 158, 11, 0.3);
-            backdrop-filter: blur(4px);
-            opacity: 0;
-            transition: opacity 0.5s, transform 0.5s;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-            pointer-events: auto; 
+            position: absolute; bottom: 12px; display: flex; align-items: center;
+            gap: 15px; z-index: 50; background: rgba(0,0,0,0.6); 
+            padding: 8px 16px; border-radius: 30px;
+            border: 1px solid rgba(245, 158, 11, 0.3); backdrop-filter: blur(4px);
+            opacity: 0; transition: opacity 0.5s, transform 0.5s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6); pointer-events: auto; 
         }
+        #narrative-overlay.show-text ~ .bottom-controls-cluster { opacity: 1; }
 
-        #narrative-overlay.show-text ~ .bottom-controls-cluster {
-            opacity: 1;
-        }
-
-        /* Positioning the clusters */
         #controls-left { left: 20px; }
         #controls-center { left: 50%; transform: translateX(-50%); }
         #controls-right { right: 20px; }
 
         .ctrl-btn {
-            background: transparent;
-            border: none;
-            color: var(--amber);
-            cursor: pointer;
-            padding: 2px;
-            transition: transform 0.2s, color 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background: transparent; border: none; color: var(--amber); cursor: pointer;
+            padding: 2px; transition: transform 0.2s, color 0.2s;
+            display: flex; align-items: center; justify-content: center;
         }
+        .ctrl-btn:hover { transform: scale(1.15); color: #fff; filter: drop-shadow(0 0 5px var(--amber)); }
+        .ctrl-btn svg { width: 28px; height: 28px; fill: currentColor; }
 
-        .ctrl-btn:hover {
-            transform: scale(1.15);
-            color: #fff;
-            filter: drop-shadow(0 0 5px var(--amber));
-        }
-
-        .ctrl-btn svg {
-            width: 28px;
-            height: 28px;
-            fill: currentColor; 
-        }
-
-        /* Top Left Navigation */
         #nav-top-left {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            gap: 16px; /* Increased gap */
+            position: absolute; top: 20px; left: 20px; z-index: 100;
+            display: flex; flex-direction: column; gap: 16px;
         }
-
         .nav-btn {
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(245, 158, 11, 0.4);
-            color: var(--amber);
-            width: 44px;
-            height: 44px;
-            border-radius: 8px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s;
-            backdrop-filter: blur(5px);
-            position: relative;
+            background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(245, 158, 11, 0.4);
+            color: var(--amber); width: 44px; height: 44px; border-radius: 8px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s; backdrop-filter: blur(5px);
         }
-
         .nav-btn:hover {
-            background: var(--amber);
-            color: black;
-            box-shadow: 0 0 15px var(--amber);
-            transform: scale(1.05);
+            background: var(--amber); color: black;
+            box-shadow: 0 0 15px var(--amber); transform: scale(1.05);
         }
 
-        /* Start Screen */
         #start-screen {
-            position: fixed;
-            inset: 0;
-            background: #000;
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 1s ease;
-            gap: 2rem;
+            position: fixed; inset: 0; background: #000; z-index: 2000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 1s ease; gap: 2rem;
         }
-
         #start-btn {
-            background: transparent;
-            color: var(--amber);
-            border: 2px solid var(--amber);
-            padding: 15px 40px;
-            font-family: 'Pirata One', cursive;
-            font-size: 2.5rem;
-            cursor: pointer;
-            transition: all 0.4s;
-            letter-spacing: 3px;
-            box-shadow: 0 0 15px var(--amber-glow);
-            text-transform: uppercase;
+            background: transparent; color: var(--amber); border: 2px solid var(--amber);
+            padding: 15px 40px; font-family: 'Pirata One', cursive; font-size: 2.5rem;
+            cursor: pointer; transition: all 0.4s; letter-spacing: 3px;
+            box-shadow: 0 0 15px var(--amber-glow); text-transform: uppercase;
         }
-
         #start-btn:hover {
-            background: var(--amber);
-            color: black;
-            box-shadow: 0 0 40px var(--amber);
+            background: var(--amber); color: black; box-shadow: 0 0 40px var(--amber);
             transform: scale(1.05);
         }
-
         #btn-fullscreen-start {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--amber);
-            border: 1px solid rgba(245, 158, 11, 0.5);
-            padding: 10px 25px;
-            font-family: 'Alegreya', serif;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            border-radius: 30px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            background: rgba(245, 158, 11, 0.1); color: var(--amber);
+            border: 1px solid rgba(245, 158, 11, 0.5); padding: 10px 25px;
+            font-family: 'Alegreya', serif; font-size: 1.2rem; cursor: pointer;
+            transition: all 0.3s; border-radius: 30px; display: flex; align-items: center; gap: 10px;
             animation: pulse-gold 2.5s infinite;
         }
-
         #btn-fullscreen-start:hover {
-            background: var(--amber);
-            color: black;
-            animation: none;
+            background: var(--amber); color: black; animation: none;
             box-shadow: 0 0 20px var(--amber-glow);
         }
 
-        /* Fade Out Curtain for End Scene */
         #fade-curtain {
-            position: fixed;
-            inset: 0;
-            background: black;
-            z-index: 3000;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 3s ease-in-out;
+            position: fixed; inset: 0; background: black; z-index: 3000;
+            pointer-events: none; opacity: 0; transition: opacity 3s ease-in-out;
         }
 
-        /* QR Modal */
         #qr-modal {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(8px);
-            z-index: 200;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.4s ease;
+            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px);
+            z-index: 6000; display: none; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.4s ease;
         }
-
-        #qr-modal.active {
-            display: flex;
-            opacity: 1;
-        }
-
+        #qr-modal.active { display: flex; opacity: 1; }
         #qr-content {
-            background: #111;
-            border: 1px solid var(--amber);
-            padding: 2.5rem;
-            border-radius: 15px;
-            text-align: center;
-            max-width: 400px;
-            width: 90%;
-            transform: scale(0.8);
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            background: #111; border: 1px solid var(--amber); padding: 2.5rem;
+            border-radius: 15px; text-align: center; max-width: 400px; width: 90%;
+            transform: scale(0.8); transition: transform 0.4s; box-shadow: 0 0 50px rgba(0,0,0,0.8);
         }
-
-        #qr-modal.active #qr-content {
-            transform: scale(1);
-        }
-
-        #qr-content h3 {
-            font-family: 'Pirata One', cursive;
-            color: var(--amber);
-            font-size: 2.5rem;
-            margin: 0 0 1rem 0;
-            letter-spacing: 2px;
-        }
-
-        #qr-content p {
-            font-family: 'Alegreya', serif;
-            color: #ccc;
-            margin-bottom: 2rem;
-            font-size: 1.2rem;
-        }
-
-        .qr-frame {
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
-            display: inline-block;
-            margin-bottom: 1.5rem;
-        }
-
-        .qr-frame img {
-            display: block;
-            width: 200px;
-            height: 200px;
-        }
-
+        #qr-modal.active #qr-content { transform: scale(1); }
+        .qr-frame { background: white; padding: 15px; border-radius: 10px; display: inline-block; margin-bottom: 1.5rem; }
         .btn-close-modal {
-            background: transparent;
-            border: 1px solid var(--amber);
-            color: var(--amber);
-            padding: 8px 20px;
-            font-family: 'Pirata One', cursive;
-            cursor: pointer;
-            transition: 0.3s;
+            background: transparent; border: 1px solid var(--amber); color: var(--amber);
+            padding: 8px 20px; font-family: 'Pirata One', cursive; cursor: pointer; transition: 0.3s;
+        }
+        .btn-close-modal:hover { background: var(--amber); color: black; }
+
+        /* --- DICE WIDGET STYLES --- */
+        #dice-overlay-container {
+            position: fixed;
+            top: 20%;
+            right: 5%;
+            width: 360px;
+            height: 500px;
+            z-index: 5000;
+            transform: scale(0.8); /* Scale down slightly so it's not huge */
+            transform-origin: top right;
+            display: none; /* Hidden by default */
+        }
+        
+        #dice-overlay-container.active {
+            display: block;
         }
 
-        .btn-close-modal:hover {
-            background: var(--amber);
-            color: black;
+        #dice-widget {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(245, 158, 11, 0.3);
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--amber);
         }
+
+        /* Widget UI Layer */
+        #widget-ui {
+            position: absolute; inset: 0; z-index: 10; pointer-events: none;
+            display: flex; flex-direction: column; justify-content: space-between; padding: 20px;
+        }
+
+        .dice-header {
+            position: relative; text-align: center; padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            background: linear-gradient(to bottom, rgba(30, 41, 59, 0.95), transparent);
+            cursor: grab; /* Indicates draggable */
+            pointer-events: auto;
+        }
+        .dice-header:active { cursor: grabbing; }
+
+        .dice-title {
+            color: #94a3b8; font-size: 0.85rem; letter-spacing: 2px;
+            text-transform: uppercase; font-weight: 700; font-family: sans-serif;
+        }
+
+        /* Close Button for Widget */
+        .btn-close-dice {
+            position: absolute; top: 0; left: 0; width: 20px; height: 20px;
+            background: transparent; border: none; color: #64748b; cursor: pointer;
+            font-size: 16px; line-height: 1;
+        }
+        .btn-close-dice:hover { color: var(--amber); }
+
+        /* Color Picker */
+        #color-picker-wrapper { position: absolute; top: 0; right: 0; pointer-events: auto; }
+        
+        #current-color-btn {
+            width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3); cursor: pointer;
+            background: #3b82f6; transition: transform 0.2s; padding: 0;
+        }
+        #current-color-btn:hover { transform: scale(1.1); }
+
+        #color-dropdown {
+            position: absolute; top: 30px; right: -5px;
+            background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(4px);
+            padding: 8px; border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+            opacity: 0; transform: translateY(-10px); pointer-events: none;
+            transition: all 0.2s ease; border: 1px solid rgba(255,255,255,0.1);
+        }
+        #color-dropdown.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+        .color-option {
+            width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent;
+            cursor: pointer; transition: transform 0.1s;
+        }
+        .color-option:hover { transform: scale(1.15); border-color: white; }
+
+        /* Result Display */
+        #result-display {
+            font-size: 5rem; font-weight: 800; color: white;
+            text-align: center; font-family: sans-serif;
+            text-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            opacity: 0; transform: translate(-50%, -50%) scale(0.8);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: absolute; top: 45%; left: 50%; pointer-events: none; z-index: 20;
+        }
+        #result-display.visible { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+        /* Controls */
+        .dice-controls-area {
+            pointer-events: auto;
+            background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;
+            padding: 10px; display: flex; flex-direction: column; gap: 10px;
+        }
+
+        .dice-selector {
+            display: flex; justify-content: space-between;
+            background: rgba(0,0,0,0.2); border-radius: 12px; padding: 4px;
+        }
+
+        .die-btn {
+            background: none; border: none; color: #94a3b8;
+            font-weight: bold; font-size: 0.8rem; padding: 8px 6px;
+            cursor: pointer; border-radius: 8px; transition: all 0.2s; font-family: sans-serif;
+        }
+        .die-btn:hover { color: white; background: rgba(255,255,255,0.05); }
+        .die-btn.active { background: #334155; color: #3b82f6; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+
+        #roll-btn {
+            background: #3b82f6; border: none; padding: 12px;
+            color: white; font-weight: bold; text-transform: uppercase;
+            letter-spacing: 1px; border-radius: 12px; cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); transition: 0.1s; font-family: sans-serif;
+        }
+        #roll-btn:active { transform: scale(0.98); }
+        #roll-btn:disabled { filter: grayscale(1); opacity: 0.5; cursor: default; }
+        
+        #canvas-container { width: 100%; height: 100%; }
+
     </style>
 </head>
 <body>
@@ -522,43 +377,37 @@
         <p style="font-size: 1.2rem;">Please rotate your device to landscape to continue your journey.</p>
     </div>
 
-    <!-- Start Screen -->
     <div id="start-screen">
         <h1 style="font-family: 'Pirata One'; color: var(--amber); font-size: 4rem; margin-bottom: 1rem; text-shadow: 0 0 20px var(--amber-glow);">The Sanctuary</h1>
-        
         <button id="start-btn" onclick="startGame()">Begin Journey</button>
-        
-        <!-- Fullscreen Option on Start Screen -->
         <button id="btn-fullscreen-start" onclick="toggleFullScreen()" title="Enter Fullscreen">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
-            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
             Fullscreen (Best Experience)
         </button>
     </div>
 
-    <!-- Final Fade Curtain -->
     <div id="fade-curtain"></div>
 
-    <!-- Top Left Navigation (Fullscreen Removed) -->
     <div id="nav-top-left">
-        <!-- QR Code Button -->
         <button class="nav-btn" onclick="showQR()" title="View QR Code">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="7" height="7"></rect>
-                <rect x="14" y="3" width="7" height="7"></rect>
-                <rect x="14" y="14" width="7" height="7"></rect>
-                <rect x="3" y="14" width="7" height="7"></rect>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        </button>
+        <button class="nav-btn" onclick="toggleDiceWidget()" title="Toggle Dice Engine">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.54 15H17a2 2 0 0 0-2 2v4.54"/>
+                <path d="M7 3.34V5a3 3 0 0 0 3 3a2 2 0 0 1 2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2c0-1.1.9-2 2-2h.54"/>
+                <path d="M3.18 6.34A9 9 0 0 1 20.82 20.82"/>
+                <path d="M3.18 6.34L12 12l8.82 8.82"/>
+                <path d="M12 12v9"/>
+                <path d="M12 12h9"/>
             </svg>
         </button>
     </div>
 
-    <!-- Top Center Title Area -->
     <div id="top-title-container">
         <h1 id="scene-title"></h1>
     </div>
 
-    <!-- QR Code Modal -->
     <div id="qr-modal" onclick="hideQR()">
         <div id="qr-content" onclick="event.stopPropagation()">
             <h3>Share the Journey</h3>
@@ -571,10 +420,46 @@
         </div>
     </div>
 
+    <div id="dice-overlay-container">
+        <div id="dice-widget">
+            <div id="widget-ui">
+                <div class="dice-header" id="dice-drag-handle">
+                    <button class="btn-close-dice" onclick="toggleDiceWidget()">×</button>
+                    <div class="dice-title">Polyhedral Engine</div>
+                    <div id="color-picker-wrapper">
+                        <button id="current-color-btn" title="Change Dice Color"></button>
+                        <div id="color-dropdown">
+                            <button class="color-option" data-color="0x3b82f6" style="background: #3b82f6;"></button>
+                            <button class="color-option" data-color="0xef4444" style="background: #ef4444;"></button>
+                            <button class="color-option" data-color="0x22c55e" style="background: #22c55e;"></button>
+                            <button class="color-option" data-color="0xa855f7" style="background: #a855f7;"></button>
+                            <button class="color-option" data-color="0xeab308" style="background: #eab308;"></button>
+                            <button class="color-option" data-color="0x334155" style="background: #334155;"></button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="result-display">20</div>
+                
+                <div class="dice-controls-area">
+                    <div class="dice-selector">
+                        <button class="die-btn" data-sides="4">D4</button>
+                        <button class="die-btn" data-sides="6">D6</button>
+                        <button class="die-btn" data-sides="8">D8</button>
+                        <button class="die-btn" data-sides="10">D10</button>
+                        <button class="die-btn" data-sides="12">D12</button>
+                        <button class="die-btn active" data-sides="20">D20</button>
+                    </div>
+                    <button id="roll-btn">Roll Dice</button>
+                </div>
+            </div>
+            <div id="canvas-container"></div>
+        </div>
+    </div>
+
     <div id="game-container">
         <img id="scene-image" src="" alt="">
         
-        <!-- Interactive Overlay: Clicking skips text/advances -->
         <div id="narrative-overlay" onclick="handleManualAdvance(event)">
             <div id="narrative-text"></div>
             
@@ -587,124 +472,52 @@
             </div>
         </div>
 
-        <!-- Bottom Controls: Left (Back) -->
         <div id="controls-left" class="bottom-controls-cluster">
             <button class="ctrl-btn" onclick="goBack(event)" title="Previous Scene">
-                <svg viewBox="0 0 24 24">
-                    <line x1="19" y1="12" x2="5" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <polyline points="12 19 5 12 12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+                <svg viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="12 19 5 12 12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
         </div>
 
-        <!-- Bottom Controls: Center (Restart, Play/Pause) -->
         <div id="controls-center" class="bottom-controls-cluster">
-            <!-- Restart Button -->
             <button class="ctrl-btn" onclick="restartScene(event)" title="Restart Current Scene">
-                <svg viewBox="0 0 24 24">
-                    <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
-                </svg>
+                <svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
             </button>
-            
-            <!-- Play/Pause Button -->
             <button class="ctrl-btn" onclick="togglePause(event)" id="btn-pause" title="Pause/Play">
-                 <svg viewBox="0 0 24 24">
-                    <rect x="6" y="4" width="4" height="16"></rect>
-                    <rect x="14" y="4" width="4" height="16"></rect>
-                </svg>
+                 <svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
             </button>
         </div>
 
-        <!-- Bottom Controls: Right (Next/Fast Forward) -->
         <div id="controls-right" class="bottom-controls-cluster">
             <button class="ctrl-btn" onclick="handleManualAdvance(event)" title="Next Scene">
-                 <svg viewBox="0 0 24 24">
-                    <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <polyline points="12 5 19 12 12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+                 <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="12 5 19 12 12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
         </div>
 
-        <!-- Progress Bar at Bottom -->
-        <div id="progress-container">
-            <div id="progress-bar"></div>
-        </div>
+        <div id="progress-container"><div id="progress-bar"></div></div>
     </div>
 
     <script>
+        // --- GAME VARIABLES & LOGIC ---
         const gameData = [
-            {
-                id: 0,
-                title: "The Storm Approaches",
-                image: "TownStorm.png",
-                text: "The storm broke just as the fortress town of Blackwood came into view, its towers silhouetted against constant lightning strikes.",
-                anim: "pan-zoom-storm 10s ease-out forwards"
-            },
-            {
-                id: 1,
-                title: "The Stone Gates",
-                image: "GateNight.png",
-                text: "The driving rain turned the road into slick mud as you rushed toward the intimidating stone gate, seeking respite from the deluge.",
-                anim: "gentle-push 10s ease-in-out forwards"
-            },
-            {
-                id: 2,
-                title: "The Flickering Sign",
-                image: "TavernNight.png",
-                text: "Your goal became the glowing oil-lamp sign of 'The Weary Traveler Inn & Tavern', a promise of comfort in the dark.",
-                anim: "gentle-pan 10s ease-in-out forwards"
-            },
-            {
-                id: 3,
-                title: "The Weary Traveler",
-                image: "Tavern.png",
-                text: "The main room is alive with warmth and low conversation. You stand at the threshold, considering your options.",
-                isHub: true,
-                anim: "gentle-push 15s ease-in-out forwards"
-            },
-            {
-                id: 4,
-                title: "The Innkeeper",
-                image: "Bartender.png",
-                text: "Bartho leans forward with professional warmth. 'Rough night out there, traveler. A hot stew and a dry bed? You've come to the right place.'",
-                isInteraction: true,
-                anim: "gentle-push 12s ease-out forwards"
-            },
-            {
-                id: 5,
-                title: "The Hearth",
-                image: "Barmaid.png",
-                text: "By the stone hearth, Elara tends a cauldron. She offers a kind smile. 'Warm yourself, friend. There's plenty of soup, and the fire won't go out tonight.'",
-                isInteraction: true,
-                anim: "gentle-push 12s ease-out forwards"
-            },
-            {
-                id: 6,
-                title: "The Common Room",
-                image: "Table.png",
-                text: "The warrior barely looks up from his ale, but the wizard catches your eye, his hands pulsing with a strange blue light as he whispers to his companion.",
-                isInteraction: true,
-                anim: "gentle-pan 12s ease-in-out forwards"
-            },
-            {
-                id: 7,
-                title: "The Chilling Presence",
-                image: "Stranger.png",
-                text: "In the darkest corner, Malach the Scout watches the room like a hawk. He says nothing, but you feel his gaze linger on the wizard at the table.",
-                isInteraction: true,
-                anim: "gentle-push 12s ease-out forwards"
-            },
-            {
-                id: 8,
-                title: "A Night's Rest",
-                image: "Room.png",
-                text: "Finally, you find refuge in a small private room upstairs. The storm still rages outside, but for now, you are safe behind thick walls.",
-                anim: "gentle-push 10s ease-out forwards",
-                isFinal: true
-            }
+            { id: 0, title: "The Storm Approaches", image: "TownStorm.png", text: "The storm broke just as the fortress town of Blackwood came into view, its towers silhouetted against constant lightning strikes.", anim: "pan-zoom-storm 10s ease-out forwards" },
+            { id: 1, title: "The Stone Gates", image: "GateNight.png", text: "The driving rain turned the road into slick mud as you rushed toward the intimidating stone gate, seeking respite from the deluge.", anim: "gentle-push 10s ease-in-out forwards" },
+            { id: 2, title: "The Flickering Sign", image: "TavernNight.png", text: "Your goal became the glowing oil-lamp sign of 'The Weary Traveler Inn & Tavern', a promise of comfort in the dark.", anim: "gentle-pan 10s ease-in-out forwards" },
+            { id: 3, title: "The Weary Traveler", image: "Tavern.png", text: "The main room is alive with warmth and low conversation. You stand at the threshold, considering your options.", isHub: true, anim: "gentle-push 15s ease-in-out forwards" },
+            { id: 4, title: "The Innkeeper", image: "Bartender.png", text: "Bartho leans forward with professional warmth. 'Rough night out there, traveler. A hot stew and a dry bed? You've come to the right place.'", isInteraction: true, anim: "gentle-push 12s ease-out forwards" },
+            { id: 5, title: "The Hearth", image: "Barmaid.png", text: "By the stone hearth, Elara tends a cauldron. She offers a kind smile. 'Warm yourself, friend. There's plenty of soup, and the fire won't go out tonight.'", isInteraction: true, anim: "gentle-push 12s ease-out forwards" },
+            { id: 6, title: "The Common Room", image: "Table.png", text: "The warrior barely looks up from his ale, but the wizard catches your eye, his hands pulsing with a strange blue light as he whispers to his companion.", isInteraction: true, anim: "gentle-pan 12s ease-in-out forwards" },
+            { id: 7, title: "The Chilling Presence", image: "Stranger.png", text: "In the darkest corner, Malach the Scout watches the room like a hawk. He says nothing, but you feel his gaze linger on the wizard at the table.", isInteraction: true, anim: "gentle-push 12s ease-out forwards" },
+            { id: 8, title: "A Night's Rest", image: "Room.png", text: "Finally, you find refuge in a small private room upstairs. The storm still rages outside, but for now, you are safe behind thick walls.", anim: "gentle-push 10s ease-out forwards", isFinal: true }
         ];
 
         let currentIndex = 0;
+        let timer = null;
+        let progress = 0;
+        let isPaused = false;
+        const SCENE_DURATION = 10000;
+        const UPDATE_INTERVAL = 50;   
+
+        // Elements
         const imgElement = document.getElementById('scene-image');
         const titleElement = document.getElementById('scene-title');
         const textElement = document.getElementById('narrative-text');
@@ -713,25 +526,77 @@
         const progressBar = document.getElementById('progress-bar');
         const progressContainer = document.getElementById('progress-container');
         const btnPause = document.getElementById('btn-pause');
-        const bottomControls = document.querySelectorAll('.bottom-controls-cluster');
         const startScreen = document.getElementById('start-screen');
         const fadeCurtain = document.getElementById('fade-curtain');
-
-        // Timer Logic
-        let timer = null;
-        let progress = 0;
-        let isPaused = false;
-        const SCENE_DURATION = 10000; // 10 seconds
-        const UPDATE_INTERVAL = 50;   
+        const diceWidget = document.getElementById('dice-overlay-container');
 
         function startGame() {
             startScreen.style.opacity = '0';
             setTimeout(() => {
                 startScreen.style.display = 'none';
-                renderScene(0); // Start the first scene logic only after click
+                renderScene(0);
             }, 1000);
         }
 
+        function toggleDiceWidget() {
+            diceWidget.classList.toggle('active');
+        }
+
+        // --- DRAG LOGIC FOR DICE WIDGET ---
+        const dragHandle = document.getElementById('dice-drag-handle');
+        let isDragging = false;
+        let currentX, currentY, initialX, initialY;
+        let xOffset = 0, yOffset = 0;
+
+        dragHandle.addEventListener("mousedown", dragStart);
+        document.addEventListener("mousemove", drag);
+        document.addEventListener("mouseup", dragEnd);
+        
+        dragHandle.addEventListener("touchstart", dragStart, {passive: false});
+        document.addEventListener("touchmove", drag, {passive: false});
+        document.addEventListener("touchend", dragEnd);
+
+        function dragStart(e) {
+            if (e.type === "touchstart") {
+                initialX = e.touches[0].clientX - xOffset;
+                initialY = e.touches[0].clientY - yOffset;
+            } else {
+                initialX = e.clientX - xOffset;
+                initialY = e.clientY - yOffset;
+            }
+            if (e.target.closest('.dice-header')) {
+                isDragging = true;
+            }
+        }
+
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+                if (e.type === "touchmove") {
+                    currentX = e.touches[0].clientX - initialX;
+                    currentY = e.touches[0].clientY - initialY;
+                } else {
+                    currentX = e.clientX - initialX;
+                    currentY = e.clientY - initialY;
+                }
+                xOffset = currentX;
+                yOffset = currentY;
+                // Move the container
+                setTranslate(currentX, currentY, diceWidget);
+            }
+        }
+
+        function setTranslate(xPos, yPos, el) {
+            el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0) scale(0.8)`;
+        }
+
+        function dragEnd(e) {
+            initialX = currentX;
+            initialY = currentY;
+            isDragging = false;
+        }
+
+        // --- SCENE LOGIC ---
         function renderScene(index) {
             stopTimer();
             progress = 0;
@@ -743,8 +608,6 @@
             overlay.classList.remove('show-text');
             imgElement.classList.remove('visible');
             titleElement.style.opacity = '0';
-            
-            // Reset Animation by clearing style
             imgElement.style.animation = 'none';
             imgElement.offsetHeight; /* trigger reflow */
 
@@ -755,7 +618,6 @@
                 
                 const onContentReady = () => {
                     imgElement.classList.add('visible');
-                    // Apply Specific Animation
                     imgElement.style.animation = data.anim; 
                     
                     setTimeout(() => {
@@ -765,7 +627,6 @@
                         if (data.isHub) {
                             choiceGrid.style.display = 'flex';
                             setTimeout(() => { choiceGrid.style.opacity = '1'; }, 50);
-                            
                             progressContainer.style.display = 'none'; 
                             document.getElementById('controls-center').style.opacity = '0';
                             document.getElementById('controls-right').style.opacity = '0';
@@ -775,81 +636,53 @@
                             choiceGrid.style.display = 'none';
                             choiceGrid.style.opacity = '0'; 
                             progressContainer.style.display = 'block'; 
-                            
                             document.getElementById('controls-center').style.opacity = '1';
                             document.getElementById('controls-right').style.opacity = '1';
                             document.getElementById('controls-center').style.pointerEvents = 'auto';
                             document.getElementById('controls-right').style.pointerEvents = 'auto';
-                            
-                            if (!isPaused) {
-                                startTimer(); 
-                            }
+                            if (!isPaused) startTimer();
                             updatePauseIcon(); 
                         }
-
                     }, 200);
                 };
-
-                if (imgElement.complete) {
-                    onContentReady();
-                } else {
-                    imgElement.onload = onContentReady;
-                    imgElement.onerror = onContentReady;
-                }
+                if (imgElement.complete) onContentReady();
+                else { imgElement.onload = onContentReady; imgElement.onerror = onContentReady; }
             }, 700);
         }
 
         function startTimer() {
             if (timer) clearInterval(timer);
-            
             timer = setInterval(() => {
                 if (isPaused) return;
-
                 progress += (UPDATE_INTERVAL / SCENE_DURATION) * 100;
                 progressBar.style.width = `${progress}%`;
-
                 if (progress >= 100) {
                     stopTimer();
-                    // Check if final scene
-                    if (gameData[currentIndex].isFinal) {
-                        endGame();
-                    } else {
-                        handleMainAction(); 
-                    }
+                    if (gameData[currentIndex].isFinal) endGame();
+                    else handleMainAction(); 
                 }
             }, UPDATE_INTERVAL);
         }
 
         function endGame() {
-            // Fade to black
             fadeCurtain.style.opacity = '1';
-            // Stop interaction
             document.getElementById('controls-left').style.display = 'none';
             document.getElementById('controls-center').style.display = 'none';
             document.getElementById('controls-right').style.display = 'none';
             document.getElementById('nav-top-left').style.display = 'none';
+            diceWidget.style.display = 'none';
         }
 
         function stopTimer() {
-            if (timer) {
-                clearInterval(timer);
-                timer = null;
-            }
+            if (timer) { clearInterval(timer); timer = null; }
         }
 
         function togglePause(event) {
             if(event) event.stopPropagation(); 
-            
             isPaused = !isPaused;
             updatePauseIcon();
-
-            if (isPaused) {
-                stopTimer();
-            } else {
-                if (!gameData[currentIndex].isHub) {
-                    startTimer(); 
-                }
-            }
+            if (isPaused) stopTimer();
+            else if (!gameData[currentIndex].isHub) startTimer(); 
         }
 
         function updatePauseIcon() {
@@ -862,11 +695,8 @@
         function goBack(event) {
             if(event) event.stopPropagation();
             const current = gameData[currentIndex];
-            if (current.isInteraction || currentIndex === 8) {
-                renderScene(3);
-            } else if (currentIndex > 0) {
-                renderScene(currentIndex - 1);
-            }
+            if (current.isInteraction || currentIndex === 8) renderScene(3);
+            else if (currentIndex > 0) renderScene(currentIndex - 1);
         }
 
         function restartScene(event) {
@@ -877,29 +707,16 @@
         function handleManualAdvance(event) {
             if(event) event.stopPropagation();
             if (gameData[currentIndex].isHub) return; 
-            
             stopTimer();
-            
-            if (gameData[currentIndex].isFinal) {
-                endGame(); // End if manual advance on final scene
-            } else {
-                handleMainAction();
-            }
+            if (gameData[currentIndex].isFinal) endGame();
+            else handleMainAction();
         }
 
         function handleMainAction() {
             const current = gameData[currentIndex];
-            if (current.isInteraction) {
-                renderScene(3); 
-            } else if (current.isHub) {
-                renderScene(8); 
-            } else if (currentIndex < gameData.length - 1) {
-                renderScene(currentIndex + 1);
-            } else {
-                // Previously looped to 0, now should be handled by isFinal check in timer
-                // But as fallback for linear loop safeguard
-                // renderScene(0); 
-            }
+            if (current.isInteraction) renderScene(3); 
+            else if (current.isHub) renderScene(8); 
+            else if (currentIndex < gameData.length - 1) renderScene(currentIndex + 1);
         }
 
         function triggerInteraction(targetIndex) {
@@ -910,48 +727,357 @@
             document.getElementById('qr-modal').classList.add('active');
             if (!isPaused) togglePause();
         }
-
         function hideQR() {
             document.getElementById('qr-modal').classList.remove('active');
         }
 
         function toggleFullScreen() {
-            if (!document.fullscreenElement &&    
-                !document.mozFullScreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement ) {  
-                if (document.documentElement.requestFullscreen) {
-                    document.documentElement.requestFullscreen();
-                } else if (document.documentElement.msRequestFullscreen) {
-                    document.documentElement.msRequestFullscreen();
-                } else if (document.documentElement.mozRequestFullScreen) {
-                    document.documentElement.mozRequestFullScreen();
-                } else if (document.documentElement.webkitRequestFullscreen) {
-                    document.documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
-                }
+            if (!document.fullscreenElement) {  
+                document.documentElement.requestFullscreen?.() || document.documentElement.webkitRequestFullscreen?.();
             } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (document.msExitFullscreen) {
-                    document.msExitFullscreen();
-                } else if (document.mozCancelFullScreen) {
-                    document.mozCancelFullScreen();
-                } else if (document.webkitExitFullscreen) {
-                    document.webkitExitFullscreen();
-                }
+                document.exitFullscreen?.() || document.webkitExitFullscreen?.();
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import * as CANNON from 'cannon-es';
+
+        // --- GLOBAL CONFIGURATION ---
+        const CONFIG = {
+            colors: {
+                die: 0x3b82f6,
+                floor: 0x1e293b,
+                text: '#ffffff',
+                gold: '#eab308',
+                red: '#dc2626',
+                dark: '#334155'
+            },
+            physics: {
+                gravity: -50,
+                friction: 0.3,
+                restitution: 0.5
+            },
+            radius: 1.5
+        };
+
+        const STATE = {
+            scene: null, camera: null, renderer: null, world: null,
+            dieBody: null, dieMesh: null,
+            logicalFaces: [], 
+            isRolling: false,
+            currentSides: 20,
+            sharedMaterial: null
+        };
+
+        function init() {
+            setupGraphics();
+            setupPhysics();
+            setupCage();
+            spawnDie(20);
+            setupInteractions();
+            animate();
+        }
+
+        function setupGraphics() {
+            const container = document.getElementById('canvas-container');
+            
+            STATE.scene = new THREE.Scene();
+            // Match widget gradient roughly or keep transparent
+            // Transparent allows widget CSS background to show
+            // STATE.scene.background = new THREE.Color(0x000000); 
+
+            STATE.camera = new THREE.PerspectiveCamera(30, 360/500, 0.1, 100);
+            STATE.camera.position.set(0, 20, 10);
+            STATE.camera.lookAt(0, 0, 0);
+
+            STATE.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            STATE.renderer.setSize(360, 500);
+            STATE.renderer.shadowMap.enabled = true;
+            STATE.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(STATE.renderer.domElement);
+
+            STATE.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+            sun.position.set(5, 15, 5);
+            sun.castShadow = true;
+            STATE.scene.add(sun);
+        }
+
+        function setupPhysics() {
+            STATE.world = new CANNON.World();
+            STATE.world.gravity.set(0, CONFIG.physics.gravity, 0);
+            const mat = new CANNON.Material();
+            STATE.world.addContactMaterial(new CANNON.ContactMaterial(mat, mat, CONFIG.physics));
+            STATE.sharedMaterial = mat;
+        }
+
+        function setupCage() {
+            // Shadow Floor
+            const floorMesh = new THREE.Mesh(
+                new THREE.PlaneGeometry(20, 20),
+                new THREE.ShadowMaterial({ opacity: 0.2 })
+            );
+            floorMesh.rotation.x = -Math.PI / 2;
+            floorMesh.receiveShadow = true;
+            STATE.scene.add(floorMesh);
+
+            const addPlane = (pos, rot) => {
+                const body = new CANNON.Body({ mass: 0, material: STATE.sharedMaterial });
+                body.addShape(new CANNON.Plane());
+                body.position.copy(pos);
+                body.quaternion.setFromEuler(rot.x, rot.y, rot.z);
+                STATE.world.addBody(body);
+            };
+            addPlane(new CANNON.Vec3(0,0,0), new CANNON.Vec3(-Math.PI/2, 0, 0));
+
+            const addWall = (x, z, ry) => {
+                const body = new CANNON.Body({ mass: 0, material: STATE.sharedMaterial });
+                body.addShape(new CANNON.Box(new CANNON.Vec3(10, 10, 1)));
+                body.position.set(x, 10, z);
+                body.quaternion.setFromEuler(0, ry, 0);
+                STATE.world.addBody(body);
+            };
+            addWall(0, -3.5, 0); 
+            addWall(0, 3.5, 0);  
+            addWall(-5, 0, Math.PI/2); 
+            addWall(5, 0, Math.PI/2);  
+        }
+
+        function getGeometry(sides, r) {
+            switch(sides) {
+                case 4: return new THREE.TetrahedronGeometry(r);
+                case 6: return new THREE.BoxGeometry(r*1.5, r*1.5, r*1.5);
+                case 8: return new THREE.OctahedronGeometry(r);
+                case 10: return createD10Geometry(r);
+                case 12: return new THREE.DodecahedronGeometry(r);
+                case 20: return new THREE.IcosahedronGeometry(r);
+                default: return new THREE.IcosahedronGeometry(r);
             }
         }
 
-        function updateFullscreenIcon() {
-            // No longer updating an on-screen button since it's on the start screen
-            // But we keep the function structure if needed for future
+        function createD10Geometry(radius) {
+            const vertices = [], indices = [];
+            const H = radius * 1.2, R = radius * 1.0, h = radius * 0.2;
+            vertices.push(0, H, 0, 0, -H, 0); 
+            for(let i=0; i<5; i++) {
+                const ang = (i * 72) * Math.PI/180;
+                vertices.push(Math.cos(ang)*R, h, Math.sin(ang)*R);
+            }
+            for(let i=0; i<5; i++) {
+                const ang = ((i * 72) + 36) * Math.PI/180;
+                vertices.push(Math.cos(ang)*R, -h, Math.sin(ang)*R);
+            }
+            for(let i=0; i<5; i++) {
+                const A=2+i, B=7+i, An=2+((i+1)%5), Bn=7+((i+1)%5);
+                indices.push(0, B, A,  0, An, B,  1, B, An,  1, An, Bn);
+            }
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geo.setIndex(indices);
+            geo.computeVertexNormals();
+            return geo;
         }
 
-        document.addEventListener('fullscreenchange', updateFullscreenIcon);
-        document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
-        document.addEventListener('mozfullscreenchange', updateFullscreenIcon);
-        document.addEventListener('MSFullscreenChange', updateFullscreenIcon);
+        function spawnDie(sides) {
+            if(STATE.dieBody) STATE.world.removeBody(STATE.dieBody);
+            if(STATE.dieMesh) STATE.scene.remove(STATE.dieMesh);
+            STATE.logicalFaces = [];
+            STATE.currentSides = sides;
 
-        // Do NOT auto-start renderScene(0). Wait for user click.
-        // window.onload = () => renderScene(0); 
+            const geometry = getGeometry(sides, CONFIG.radius);
+            const material = new THREE.MeshStandardMaterial({
+                color: CONFIG.colors.die, roughness: 0.1, metalness: 0.2, flatShading: true
+            });
+            STATE.dieMesh = new THREE.Group();
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            STATE.dieMesh.add(mesh);
+
+            const { shape, faces } = processGeometry(geometry, sides);
+            STATE.logicalFaces = faces;
+
+            STATE.dieBody = new CANNON.Body({ mass: 5, shape, material: STATE.sharedMaterial });
+            STATE.dieBody.position.set(0, 4, 0);
+            STATE.dieBody.quaternion.setFromEuler(Math.random()*6, Math.random()*6, 0);
+            
+            STATE.world.addBody(STATE.dieBody);
+            STATE.scene.add(STATE.dieMesh);
+
+            addDecals(STATE.dieMesh, STATE.logicalFaces);
+        }
+
+        function processGeometry(geometry, sides) {
+            if(sides === 6) {
+                const s = CONFIG.radius * 1.5 / 2;
+                return {
+                    shape: new CANNON.Box(new CANNON.Vec3(s, s, s)),
+                    faces: [
+                        { normal: new THREE.Vector3(1,0,0), center: new THREE.Vector3(s,0,0) },
+                        { normal: new THREE.Vector3(-1,0,0), center: new THREE.Vector3(-s,0,0) },
+                        { normal: new THREE.Vector3(0,1,0), center: new THREE.Vector3(0,s,0) },
+                        { normal: new THREE.Vector3(0,-1,0), center: new THREE.Vector3(0,-s,0) },
+                        { normal: new THREE.Vector3(0,0,1), center: new THREE.Vector3(0,0,s) },
+                        { normal: new THREE.Vector3(0,0,-1), center: new THREE.Vector3(0,0,-s) }
+                    ]
+                };
+            }
+            const pos = geometry.attributes.position;
+            const vertices = [], pointsMap = {}, tempFaces = [];
+            
+            for(let i=0; i<pos.count; i++) {
+                const v = new THREE.Vector3().fromBufferAttribute(pos, i);
+                const key = `${v.x.toFixed(3)},${v.y.toFixed(3)},${v.z.toFixed(3)}`;
+                if(pointsMap[key] === undefined) {
+                    pointsMap[key] = vertices.length;
+                    vertices.push(new CANNON.Vec3(v.x, v.y, v.z));
+                }
+            }
+            const idx = geometry.index ? geometry.index.array : [...Array(pos.count).keys()];
+            for(let i=0; i<idx.length; i+=3) {
+                tempFaces.push([idx[i], idx[i+1], idx[i+2]]);
+            }
+            const cannonFaces = tempFaces.map(tri => tri.map(i => {
+                const v = new THREE.Vector3().fromBufferAttribute(pos, i);
+                return pointsMap[`${v.x.toFixed(3)},${v.y.toFixed(3)},${v.z.toFixed(3)}`];
+            }));
+
+            const logicalFaces = [];
+            tempFaces.forEach(tri => {
+                const a = new THREE.Vector3().fromBufferAttribute(pos, tri[0]);
+                const b = new THREE.Vector3().fromBufferAttribute(pos, tri[1]);
+                const c = new THREE.Vector3().fromBufferAttribute(pos, tri[2]);
+                const center = new THREE.Vector3().add(a).add(b).add(c).multiplyScalar(1/3);
+                const cb = new THREE.Vector3().subVectors(c, b);
+                const ab = new THREE.Vector3().subVectors(a, b);
+                const normal = new THREE.Vector3().crossVectors(cb, ab).normalize();
+                const threshold = (sides === 10) ? 0.95 : 0.99;
+                const existing = logicalFaces.find(lf => lf.normal.dot(normal) > threshold);
+                if (existing) { existing.centerAcc.add(center); existing.count++; }
+                else { logicalFaces.push({ normal: normal.clone(), centerAcc: center.clone(), count: 1 }); }
+            });
+            logicalFaces.forEach(f => f.center = f.centerAcc.divideScalar(f.count));
+
+            return {
+                shape: new CANNON.ConvexPolyhedron({ vertices, faces: cannonFaces }),
+                faces: logicalFaces
+            };
+        }
+
+        function addDecals(group, faces) {
+            faces.forEach((data, index) => {
+                const num = index + 1;
+                data.value = num; 
+                const canvas = document.createElement('canvas');
+                canvas.width = 64; canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 40px Arial';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(num, 32, 32);
+                const plane = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.8, 0.8),
+                    new THREE.MeshBasicMaterial({ 
+                        map: new THREE.CanvasTexture(canvas), 
+                        transparent: true, polygonOffset: true, polygonOffsetFactor: -1 
+                    })
+                );
+                plane.position.copy(data.center).add(data.normal.clone().multiplyScalar(0.01));
+                plane.lookAt(data.center.clone().add(data.normal));
+                group.add(plane);
+            });
+        }
+
+        function setupInteractions() {
+            document.querySelectorAll('.die-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.die-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    spawnDie(parseInt(e.target.dataset.sides));
+                    document.getElementById('result-display').classList.remove('visible');
+                });
+            });
+
+            document.getElementById('roll-btn').addEventListener('click', rollDice);
+
+            const drop = document.getElementById('color-dropdown');
+            const mainBtn = document.getElementById('current-color-btn');
+            
+            mainBtn.addEventListener('click', (e) => { e.stopPropagation(); drop.classList.toggle('open'); });
+            document.addEventListener('click', () => drop.classList.remove('open'));
+
+            document.querySelectorAll('.color-option').forEach(opt => {
+                opt.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const col = parseInt(e.target.dataset.color);
+                    const cssCol = e.target.style.background;
+                    CONFIG.colors.die = col;
+                    mainBtn.style.background = cssCol;
+                    document.getElementById('roll-btn').style.background = cssCol;
+                    if(STATE.dieMesh) STATE.dieMesh.children[0].material.color.setHex(col);
+                    drop.classList.remove('open');
+                });
+            });
+        }
+
+        function rollDice() {
+            if(STATE.isRolling || !STATE.dieBody) return;
+            STATE.isRolling = true;
+            document.getElementById('roll-btn').disabled = true;
+            document.getElementById('result-display').classList.remove('visible');
+
+            STATE.dieBody.position.set(0, 6, 0);
+            STATE.dieBody.velocity.set(0,0,0);
+            STATE.dieBody.angularVelocity.set(0,0,0);
+
+            const kick = 10, spin = 20;
+            STATE.dieBody.applyImpulse(
+                new CANNON.Vec3((Math.random()-.5)*kick, -5, (Math.random()-.5)*kick),
+                new CANNON.Vec3(0,0,0)
+            );
+            STATE.dieBody.angularVelocity.set(
+                (Math.random()-.5)*spin, (Math.random()-.5)*spin, (Math.random()-.5)*spin
+            );
+
+            const interval = setInterval(() => {
+                const v = STATE.dieBody.velocity.length();
+                const w = STATE.dieBody.angularVelocity.length();
+                if(v < 0.1 && w < 0.1 && STATE.dieBody.position.y < 3) {
+                    clearInterval(interval);
+                    showResult();
+                }
+            }, 100);
+        }
+
+        function showResult() {
+            STATE.isRolling = false;
+            document.getElementById('roll-btn').disabled = false;
+            const quat = new THREE.Quaternion().copy(STATE.dieBody.quaternion);
+            let bestDot = -Infinity, result = 1;
+            const targetDir = (STATE.currentSides === 4) ? new THREE.Vector3(0,-1,0) : new THREE.Vector3(0,1,0);
+            STATE.logicalFaces.forEach(f => {
+                const dot = f.normal.clone().applyQuaternion(quat).dot(targetDir);
+                if(dot > bestDot) { bestDot = dot; result = f.value; }
+            });
+            const disp = document.getElementById('result-display');
+            disp.innerText = result;
+            disp.style.color = (result === STATE.currentSides) ? CONFIG.colors.gold : 
+                               (result === 1) ? CONFIG.colors.red : '#ffffff';
+            disp.classList.add('visible');
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            STATE.world.step(1/60);
+            if(STATE.dieBody && STATE.dieMesh) {
+                STATE.dieMesh.position.copy(STATE.dieBody.position);
+                STATE.dieMesh.quaternion.copy(STATE.dieBody.quaternion);
+            }
+            STATE.renderer.render(STATE.scene, STATE.camera);
+        }
+
+        init();
     </script>
 </body>
 </html>
